@@ -14,14 +14,15 @@ extern "C" {
 
 #define PACKED  __attribute__((packed))
 
-typedef struct _Global  Global;
+typedef struct global_s global_t;
 
 /*
  * Function prototypes
  */
-guint       global_get_client_ping_interval (Global * __global);
-guint       global_get_client_port          (Global * __global);
-Global *    global_new                      (void);
+guint       global_get_client_ping_interval (global_t * global);
+guint       global_get_client_port          (global_t * global);
+guint       global_get_server_port          (global_t * global);
+global_t *  global_new                      (void);
 
 #ifdef	__cplusplus
 }

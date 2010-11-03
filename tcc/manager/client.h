@@ -14,7 +14,7 @@ extern "C" {
 
 #include "wrapper.h"
 
-void    client_init(Global * __global);
+void    client_init(global_t * __global);
 
 #ifdef	__cplusplus
 }

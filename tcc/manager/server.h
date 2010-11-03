@@ -14,7 +14,7 @@ extern "C" {
 
 #include "wrapper.h"
 
-void    server_init(Global * __global);
+void    server_init(global_t * __global);
 
 #ifdef	__cplusplus
 }

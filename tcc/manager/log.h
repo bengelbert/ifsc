@@ -19,7 +19,7 @@ extern "C" {
 #define warning(domain, format, ...)    (g_log(domain, G_LOG_LEVEL_WARNING, format, ## __VA_ARGS__))
 #define message(domain, format, ...)    (g_log(domain, G_LOG_LEVEL_MESSAGE, format, ## __VA_ARGS__))
 #define info(domain, format, ...)       (g_log(domain, G_LOG_LEVEL_INFO, format, ## __VA_ARGS__))
-#define debug(domain, format, ...)      (g_log(domain, G_LOG_LEVEL_DEBUG, "%s" format, __FUNCTION__, ## __VA_ARGS__))
+#define debug(domain, format, ...)      (g_log(domain, G_LOG_LEVEL_DEBUG, "%s(): " format, __FUNCTION__, ## __VA_ARGS__))
 
 void    log_set_level(gchar * __domain, guint __level);
 

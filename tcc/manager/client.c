@@ -24,7 +24,7 @@ typedef struct _ClientSourceId  ClientSourceId;
 /******************************************************************************/
 
 struct _Client {
-    Global *            global;
+    global_t *            global;
     ClientNet *         net;
     ClientSourceId *    source_id;
 };
@@ -53,7 +53,7 @@ static void     client_conn_delete  (Client * __client);
 static void     client_conn_read    (Client * __client);
 static gboolean client_connect      (gpointer __data);
 static void     client_make_header  (guchar __cmd, gchar * __buffer, guint __len);
-static Client * client_new          (Global * __global);
+static Client * client_new          (global_t * __global);
 static gboolean client_send_ping    (gpointer __data);
 static void     client_source_remove(guint __tag);
 
@@ -98,7 +98,7 @@ client_cb(GConn *       __conn,
 /******************************************************************************/
 
 void
-client_init(Global * __global)
+client_init(global_t * __global)
 {
     Client * dbfc = NULL;
 
@@ -221,7 +221,7 @@ client_make_header(guchar   __cmd,
 /******************************************************************************/
 
 static Client *
-client_new(Global * __global)
+client_new(global_t * __global)
 {
     Client * client = NULL;
 
