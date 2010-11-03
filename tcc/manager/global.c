@@ -117,6 +117,19 @@ global_get_client_port(global_t * __global)
 /******************************************************************************/
 
 guint
+global_get_server_ping_interval(global_t * global)
+{
+    g_assert(global);
+    g_assert(global->server);
+
+    debug("GLOBAL", "[%d]", global->server->ping_interval);
+
+    return global->server->ping_interval;
+}
+
+/******************************************************************************/
+
+guint
 global_get_server_port(global_t * global)
 {
     g_assert(global);

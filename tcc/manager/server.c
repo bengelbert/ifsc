@@ -4,6 +4,13 @@
 #include "wrapper.h"
 
 /*
+ * Constants
+ */
+#define SERVER_SEND_PING    0x20
+
+#define SERVER_RECV_PING    0x00
+
+/*
  * Type definitions
  */
 typedef struct server_header_s  server_header_t;
@@ -58,13 +65,19 @@ static void                 server_conn_delete              (server_host_t * hos
 static void                 server_conn_read                (server_host_t * host);
 static void                 server_conn_read_dump           (gchar * buffer, gint len);
 static server_host_t *      server_host_new                 (global_t * global);
+static GByteArray *         server_make_header              (GByteArray * array, guchar cmd, guint payload_len);
 static gint                 server_message_handler          (server_host_t * host);
-static server_header_t *    server_message_header_unpack    (server_header_t * header);
+static server_header_t *    server_message_header_unpack    (guint8 * data);
 static server_net_t *       server_net_new                  (void);
 static guint8 *             server_net_queue_get_data       (server_host_t * host);
 static guint                server_net_queue_get_len        (server_host_t * host);
 static void                 server_net_queue_push           (server_host_t * host);
 static gboolean             server_net_queue_try_pop        (gpointer host);
+static void                 server_pack_prepend_int8        (GByteArray * array, guint data);
+static GByteArray *         server_pack_prepend_int16       (GByteArray * array, guint data);
+static void                 server_pack_prepend_int32       (GByteArray * array, guint data);
+static void                 server_pack_string              (GByteArray * array, gchar * str);
+static void                 server_pack_string_sized        (GByteArray * array, gchar * str, guint len);
 static gboolean             server_send_ping                (gpointer data);
 static void                 server_source_remove            (guint tag);
 
@@ -99,7 +112,7 @@ server_cb(GServer * server, GConn * conn, gpointer data)
         gnet_conn_set_watch_error(host->net->conn, true);
         gnet_conn_read(host->net->conn);
 
-        host->net->tags->ping = common_timeout_add("PING", 1000, server_send_ping, host);
+        host->net->tags->ping = common_timeout_add("PING", global_get_server_ping_interval(host->global), server_send_ping, host);
         host->net->tags->queue_pop = common_timeout_add("QUEUE_POP", 100, server_net_queue_try_pop, host);
         
     } else {
@@ -158,8 +171,6 @@ server_conn_connect(server_host_t * host)
     gnet_conn_timeout(host->net->conn, 0);
 
     gnet_conn_read(host->net->conn);
-
-    return;
 }
 
 /******************************************************************************/
@@ -227,8 +238,10 @@ server_conn_read_dump(gchar * buffer, gint len)
 /******************************************************************************/
 
 static server_header_t *
-server_message_header_unpack(server_header_t * header)
+server_message_header_unpack(guint8 * data)
 {
+    server_header_t * header = (server_header_t *) data;
+
     g_assert(header);
 
     header->n_bytes = g_htons(header->n_bytes);
@@ -274,6 +287,23 @@ server_init(global_t * global)
 
 /******************************************************************************/
 
+static GByteArray *
+server_make_header(GByteArray * array, guchar cmd, guint payload_len)
+{
+    g_assert(array);
+
+    array = server_pack_prepend_int16(array, g_htons(0x0001));
+    array = server_pack_prepend_int32(array, g_htonl(time(NULL)));
+    array = server_pack_prepend_int32(array, g_htonl(time(NULL)));
+    array = server_pack_prepend_int8(array, cmd);
+    array = server_pack_prepend_int16(array, g_htons(0x0001));
+    array = server_pack_prepend_int16(array, g_htons(payload_len + SERVER_HEADER_LEN));
+
+    return array;
+}
+
+/******************************************************************************/
+
 static gint
 server_message_handler(server_host_t * host)
 {
@@ -281,7 +311,13 @@ server_message_handler(server_host_t * host)
 
     g_assert(host);
 
-    header = server_message_header_unpack((server_header_t *) server_net_queue_get_data(host));
+    header = server_message_header_unpack(server_net_queue_get_data(host));
+
+    switch (header->cmd) {
+    case SERVER_RECV_PING:  message("SERVER", "Ping received."); break;
+    default:
+        message("SERVER", "Invalid command ----- [%02X]", header->cmd);
+    }
 
     return header->n_bytes;
 }
@@ -337,7 +373,6 @@ server_net_queue_push(server_host_t * host)
     g_assert(host->net->event->buffer);
     g_assert(host->net->queue);
 
-
     host->net->queue = g_byte_array_append(host->net->queue, (guint8 *) host->net->event->buffer, host->net->event->length);
 
     debug("SERVER", "host->net->queue->len ------ [%d]", host->net->queue->len);
@@ -352,7 +387,7 @@ server_net_queue_remove_data(server_host_t * host, guint len)
     g_assert(host);
 
     if (len <= server_net_queue_get_len(host)) {
-        server_net_queue_remove_data(host, len);
+        host->net->queue = g_byte_array_remove_range(host->net->queue, 0, len);
     } else {
         warning("SERVER", "lost of data!!");
         warning("SERVER", "n_bytes ------------------- [%d]", len);
@@ -383,12 +418,62 @@ server_net_queue_try_pop(gpointer data)
 
 /******************************************************************************/
 
+static void
+server_pack_prepend_int8(GByteArray * array, guint data)
+{
+    array = g_byte_array_prepend(array, (guint8 *) data, sizeof (guint8));
+}
+
+/******************************************************************************/
+
+static GByteArray *
+server_pack_prepend_int16(GByteArray * array, guint data)
+{
+    return g_byte_array_prepend(array, (guint8 *) data, sizeof (guint16));
+}
+
+/******************************************************************************/
+
+static void
+server_pack_prepend_int32(GByteArray * array, guint data)
+{
+    array = g_byte_array_prepend(array, (guint8 *) data, sizeof (guint32));
+}
+
+/******************************************************************************/
+
+static void
+server_pack_string(GByteArray * array, gchar * str)
+{
+    array = g_byte_array_prepend(array, (guint8 *) str, strlen(str) + 1);
+}
+
+/******************************************************************************/
+
+static void
+server_pack_string_sized(GByteArray * array, gchar * str, guint len)
+{
+    array = g_byte_array_prepend(array, (guint8 *) str, len);
+}
+
+/******************************************************************************/
+
 static gboolean
 server_send_ping(gpointer data)
 {
-    g_assert(data);
+    server_host_t * host = (server_host_t *) data;
 
-    message("SERVER", "Enviar ping!!");
+    g_assert(host);
+
+    GByteArray * array = NULL;
+
+    array = g_byte_array_new();
+
+    server_make_header(array, SERVER_SEND_PING, 0);
+
+    gnet_conn_write(host, array->data, array->len);
+
+    g_byte_array_free(array, true);
 
     return true;
 }
@@ -404,8 +489,6 @@ server_source_remove(guint tag)
         status = g_source_remove(tag);
         debug("SERVER", "([%d]) - %s", tag, (status) ? "pass" : "fail");
     }
-
-    return;
 }
 
 /******************************************************************************/

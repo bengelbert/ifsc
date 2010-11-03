@@ -21,6 +21,7 @@ typedef struct global_s global_t;
  */
 guint       global_get_client_ping_interval (global_t * global);
 guint       global_get_client_port          (global_t * global);
+guint       global_get_server_ping_interval (global_t * global);
 guint       global_get_server_port          (global_t * global);
 global_t *  global_new                      (void);
 
