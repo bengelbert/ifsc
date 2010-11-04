@@ -62,22 +62,24 @@ static void                 server_cb                       (GServer * server, G
 static void                 server_client_cb                (GConn * conn, GConnEvent * event, gpointer data);
 static void                 server_conn_connect             (server_host_t * host);
 static void                 server_conn_delete              (server_host_t * host);
+static void                 server_conn_dump                (guint8 * buffer, gint len);
 static void                 server_conn_read                (server_host_t * host);
-static void                 server_conn_read_dump           (gchar * buffer, gint len);
+static void                 server_conn_write               (server_host_t * host, GByteArray * array);
 static server_host_t *      server_host_new                 (global_t * global);
 static GByteArray *         server_make_header              (GByteArray * array, guchar cmd, guint payload_len);
 static gint                 server_message_handler          (server_host_t * host);
 static server_header_t *    server_message_header_unpack    (guint8 * data);
+static GConn *              server_net_get_conn             (server_host_t * host);
 static server_net_t *       server_net_new                  (void);
 static guint8 *             server_net_queue_get_data       (server_host_t * host);
 static guint                server_net_queue_get_len        (server_host_t * host);
 static void                 server_net_queue_push           (server_host_t * host);
 static gboolean             server_net_queue_try_pop        (gpointer host);
-static void                 server_pack_prepend_int8        (GByteArray * array, guint data);
+static GByteArray *         server_pack_prepend_int8        (GByteArray * array, guint data);
 static GByteArray *         server_pack_prepend_int16       (GByteArray * array, guint data);
-static void                 server_pack_prepend_int32       (GByteArray * array, guint data);
-static void                 server_pack_string              (GByteArray * array, gchar * str);
-static void                 server_pack_string_sized        (GByteArray * array, gchar * str, guint len);
+static GByteArray *         server_pack_prepend_int32       (GByteArray * array, guint data);
+static GByteArray *         server_pack_string              (GByteArray * array, gchar * str);
+static GByteArray *         server_pack_string_sized        (GByteArray * array, gchar * str, guint len);
 static gboolean             server_send_ping                (gpointer data);
 static void                 server_source_remove            (guint tag);
 
@@ -128,27 +130,22 @@ server_cb(GServer * server, GConn * conn, gpointer data)
 static void
 server_client_cb(GConn * conn, GConnEvent * event, gpointer data)
 {
-    server_host_t * server = NULL;
+    server_host_t * host = NULL;
 
     g_assert(conn);
     g_assert(data);
     g_assert(event);
 
-    debug("SERVER", "conn ------------ [%p]", conn);
-    debug("SERVER", "event ----------- [%p]", event);
-    debug("SERVER", "event->type ----- [%d]", event->type);
-    debug("SERVER", "data ------------ [%p]", data);
-
-    server = (server_host_t *) data;
-    server->net->event = event;
+    host = (server_host_t *) data;
+    host->net->event = event;
 
     switch (event->type) {
-    case GNET_CONN_CONNECT: server_conn_connect(server);    break;
-    case GNET_CONN_READ:    server_conn_read(server);       break;
+    case GNET_CONN_CONNECT: server_conn_connect(host);    break;
+    case GNET_CONN_READ:    server_conn_read(host);       break;
     case GNET_CONN_WRITE:   break;
     case GNET_CONN_CLOSE:
     case GNET_CONN_TIMEOUT:
-    case GNET_CONN_ERROR:   server_conn_delete(server);     break;
+    case GNET_CONN_ERROR:   server_conn_delete(host);     break;
     default:
         g_assert_not_reached();
     }
@@ -194,24 +191,7 @@ server_conn_delete(server_host_t * host)
 /******************************************************************************/
 
 static void
-server_conn_read(server_host_t * host)
-{
-    g_assert(host);
-    g_assert(host->net);
-    g_assert(host->net->event);
-    g_assert(host->net->event->buffer);
-
-    server_conn_read_dump(host->net->event->buffer, host->net->event->length);
-
-    server_net_queue_push(host);
-
-    gnet_conn_read(host->net->conn);
-}
-
-/******************************************************************************/
-
-static void
-server_conn_read_dump(gchar * buffer, gint len)
+server_conn_dump(guint8 * buffer, gint len)
 {
     gchar   dump[4096];
     gint    i, j;
@@ -232,7 +212,40 @@ server_conn_read_dump(gchar * buffer, gint len)
         g_snprintf(&dump[j+dec], 4, "%02X ", buffer[i]);
     }
 
-    debug("MNG", "\n%s\n", dump);
+    debug("SERVER", "\n%s\n", dump);
+}
+
+/******************************************************************************/
+
+static void
+server_conn_read(server_host_t * host)
+{
+    g_assert(host);
+    g_assert(host->net);
+    g_assert(host->net->event);
+    g_assert(host->net->event->buffer);
+
+    server_conn_dump((guint8 *) host->net->event->buffer, host->net->event->length);
+
+    server_net_queue_push(host);
+
+    gnet_conn_read(host->net->conn);
+}
+
+/******************************************************************************/
+
+static void
+server_conn_write(server_host_t * host, GByteArray * array)
+{
+    g_assert(array);
+    g_assert(array->data);
+    g_assert(host);
+
+    server_conn_dump(array->data, array->len);
+
+    gnet_conn_write(server_net_get_conn(host), (gchar *) array->data, array->len);
+
+    g_byte_array_free(array, true);
 }
 
 /******************************************************************************/
@@ -320,6 +333,18 @@ server_message_handler(server_host_t * host)
     }
 
     return header->n_bytes;
+}
+
+/******************************************************************************/
+
+static GConn *
+server_net_get_conn(server_host_t * host)
+{
+    g_assert(host);
+    g_assert(host->net);
+    g_assert(host->net->conn);
+    
+    return host->net->conn;
 }
 
 /******************************************************************************/
@@ -418,10 +443,12 @@ server_net_queue_try_pop(gpointer data)
 
 /******************************************************************************/
 
-static void
+static GByteArray *
 server_pack_prepend_int8(GByteArray * array, guint data)
 {
-    array = g_byte_array_prepend(array, (guint8 *) data, sizeof (guint8));
+    g_assert(array);
+
+    return g_byte_array_prepend(array, (guint8 *) & data, sizeof (guint8));
 }
 
 /******************************************************************************/
@@ -429,31 +456,41 @@ server_pack_prepend_int8(GByteArray * array, guint data)
 static GByteArray *
 server_pack_prepend_int16(GByteArray * array, guint data)
 {
-    return g_byte_array_prepend(array, (guint8 *) data, sizeof (guint16));
+    g_assert(array);
+
+    return g_byte_array_prepend(array, (guint8 *) & data, sizeof (guint16));
 }
 
 /******************************************************************************/
 
-static void
+static GByteArray *
 server_pack_prepend_int32(GByteArray * array, guint data)
 {
-    array = g_byte_array_prepend(array, (guint8 *) data, sizeof (guint32));
+    g_assert(array);
+
+    return g_byte_array_prepend(array, (guint8 *) & data, sizeof (guint32));
 }
 
 /******************************************************************************/
 
-static void
+static GByteArray *
 server_pack_string(GByteArray * array, gchar * str)
 {
-    array = g_byte_array_prepend(array, (guint8 *) str, strlen(str) + 1);
+    g_assert(array);
+    g_assert(str);
+
+    return g_byte_array_prepend(array, (guint8 *) str, strlen(str) + 1);
 }
 
 /******************************************************************************/
 
-static void
+static GByteArray *
 server_pack_string_sized(GByteArray * array, gchar * str, guint len)
 {
-    array = g_byte_array_prepend(array, (guint8 *) str, len);
+    g_assert(array);
+    g_assert(str);
+
+    return g_byte_array_prepend(array, (guint8 *) str, len);
 }
 
 /******************************************************************************/
@@ -467,13 +504,13 @@ server_send_ping(gpointer data)
 
     GByteArray * array = NULL;
 
+    message("SERVER", "<--------------------");
+
     array = g_byte_array_new();
 
-    server_make_header(array, SERVER_SEND_PING, 0);
+    array = server_make_header(array, SERVER_SEND_PING, 0);
 
-    gnet_conn_write(host, array->data, array->len);
-
-    g_byte_array_free(array, true);
+    server_conn_write(host, array);
 
     return true;
 }

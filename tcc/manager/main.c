@@ -16,8 +16,9 @@ typedef struct app_entries_data_s   app_entries_data_t;
 /******************************************************************************/
 
 struct app_entries_data_s {
-    guint client;
-    guint server;
+    guint   client;
+    gchar ** device;
+    guint   server;
 };
 
 /******************************************************************************/
@@ -33,6 +34,7 @@ struct app_s {
 static app_t app;
 static GOptionEntry entries[] = {
     {"client", 'c', 0, G_OPTION_ARG_NONE, &app.cmdline.client, "Start client!", NULL},
+    {"device", 'd', 0, G_OPTION_ARG_STRING_ARRAY, &app.cmdline.device, "Device type [lpc|omap]", NULL},
     {"server", 's', 0, G_OPTION_ARG_NONE, &app.cmdline.server, "Start server!", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}
 };
@@ -103,7 +105,13 @@ int main(int argc, char * argv[])
     main_loop = g_main_loop_new(NULL, false);
 
     app_init_cmdline(&argc, &argv);
-    
+  
+    if (app.cmdline.device != NULL) {
+        gint i;
+        for (i = 0; app.cmdline.device[i]; i++)
+            g_message("Device ----- [%s]", app.cmdline.device[i]);
+    }
+
     if (app.cmdline.server == true) {
         app_start_server();
     } else if (app.cmdline.client == true) {

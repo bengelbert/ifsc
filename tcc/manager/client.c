@@ -50,6 +50,7 @@ struct _ClientSourceId {
 static void     client_cb           (GConn * __conn, GConnEvent * __event, gpointer __data);
 static void     client_conn_connect (Client * __client);
 static void     client_conn_delete  (Client * __client);
+static void     client_conn_dump    (guint8 * buffer, gint len);
 static void     client_conn_read    (Client * __client);
 static gboolean client_connect      (gpointer __data);
 static void     client_make_header  (guchar __cmd, gchar * __buffer, guint __len);
@@ -137,36 +138,58 @@ client_conn_connect(Client * __client)
 /******************************************************************************/
 
 static void
-client_conn_delete(Client * __client)
+client_conn_delete(Client * client)
 {
-    g_assert(__client);
+    g_assert(client);
 
-    debug("CLIENT", "([%p])", __client);
+    debug("CLIENT", "([%p])", client);
     
-    client_source_remove(__client->source_id->connect);
-    client_source_remove(__client->source_id->ping);
+    client_source_remove(client->source_id->ping);
 
-    gnet_conn_delete(__client->net->conn);
-    __client->net->conn = NULL;
+    gnet_conn_delete(client->net->conn);
 
-    __client->source_id->connect = common_timeout_add("CONNECT",
-                                                        3000,
-                                                        client_connect,
-                                                        __client);
+    client->net->conn = NULL;
 
-    return;
+    common_timeout_add("CONNECT", 10000, client_connect, client);
 }
 
 /******************************************************************************/
 
 static void
-client_conn_read(Client * __client)
+client_conn_dump(guint8 * buffer, gint len)
 {
-    g_assert(__client);
+    gchar   dump[4096];
+    gint    i, j;
+    gint    dec = 0;
 
-    gnet_conn_read(__client->net->conn);
+    g_assert(buffer);
 
-    return;
+    debug("CLIENT", "len ----- [%d]", len);
+
+    memset(dump, 0, sizeof (dump));
+    for (i = 0, j = 0; i < len; i++, j+=3) {
+
+        if (!(i % 10)) {
+            g_snprintf(&dump[j + dec], 2, "\n");
+            dec += 1;
+        }
+
+        g_snprintf(&dump[j+dec], 4, "%02X ", buffer[i]);
+    }
+
+    debug("CLIENT", "\n%s\n", dump);
+}
+
+/******************************************************************************/
+
+static void
+client_conn_read(Client * client)
+{
+    g_assert(client);
+
+    client_conn_dump((guint8 *) client->net->event->buffer, client->net->event->length);
+
+    gnet_conn_read(client->net->conn);
 }
 
 /******************************************************************************/
@@ -182,10 +205,7 @@ client_connect(gpointer __data)
     
     debug("CLIENT", "([%p])", dbfc);
 
-    dbfc->net->conn = gnet_conn_new("localhost",
-                                    global_get_client_port(dbfc->global),
-                                    client_cb,
-                                    dbfc);
+    dbfc->net->conn = gnet_conn_new("localhost", global_get_client_port(dbfc->global), client_cb, dbfc);
 
     debug("CLIENT", "()->net->conn: [%p]", dbfc->net->conn);
 
@@ -193,7 +213,7 @@ client_connect(gpointer __data)
     gnet_conn_timeout(dbfc->net->conn, 3000);
     gnet_conn_connect(dbfc->net->conn);
 
-    return true;
+    return false;
 }
 
 /******************************************************************************/
