@@ -106,13 +106,6 @@ struct dbfc_tags_s {
  * Function prototypes
  */
 /**
- *
- * @param dbfc
- */
-static void
-dbfc_assert(dbfc_t *dbfc);
-
-/**
  * 
  * @return 
  */
@@ -127,6 +120,13 @@ dbfc_buffer_new(void);
 static void
 dbfc_data_dump(guchar *buffer,
         gssize len);
+
+/**
+ * 
+ * @param dbfc
+ */
+static void
+dbfc_destroy(dbfc_t *dbfc);
 
 /**
  * 
@@ -362,7 +362,9 @@ dbfc_destroy(dbfc_t *dbfc)
 static void
 dbfc_input_stream_read_async(dbfc_t *dbfc)
 {
-    dbfc_assert(dbfc);
+    g_assert(dbfc);
+    g_assert(dbfc->stream);
+    g_assert(dbfc->stream->in);
 
     g_input_stream_read_async(dbfc->stream->in,
             dbfc->buffer->in,
@@ -544,7 +546,9 @@ dbfc_read_data(GObject *source,
     GInputStream *in = G_INPUT_STREAM(source);
     gssize nread;
 
-    dbfc_assert(dbfc);
+    g_assert(dbfc);
+    g_assert(dbfc->buffer);
+    g_assert(dbfc->buffer->in);
 
     nread = g_input_stream_read_finish(in, result, &error);
     g_assert_no_error(error);
