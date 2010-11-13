@@ -8,7 +8,11 @@
 extern "C" {
 #endif
 
-
+gboolean
+dbfc_connect_handler(GThreadedSocketService * service,
+        GSocketConnection * connection,
+        GSocketListener * listener,
+        gpointer user_data);
 
 
 #ifdef	__cplusplus

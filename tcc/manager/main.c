@@ -87,9 +87,8 @@ app_start_server(void)
 {
     g_message("Starting app server!");
 
-    server_init(global_new());
-    
-    return;
+    //server_init(global_new());
+    service_socket_add(50000, G_CALLBACK(dbfc_connect_handler), NULL);
 }
 
 /******************************************************************************/
@@ -98,20 +97,11 @@ app_start_server(void)
  */
 int main(int argc, char * argv[])
 {
-    GMainLoop * main_loop = NULL;
-
+    g_type_init();
     g_thread_init(NULL);
-
-    main_loop = g_main_loop_new(NULL, false);
 
     app_init_cmdline(&argc, &argv);
   
-    if (app.cmdline.device != NULL) {
-        gint i;
-        for (i = 0; app.cmdline.device[i]; i++)
-            g_message("Device ----- [%s]", app.cmdline.device[i]);
-    }
-
     if (app.cmdline.server == true) {
         app_start_server();
     } else if (app.cmdline.client == true) {
@@ -120,7 +110,7 @@ int main(int argc, char * argv[])
        app_exit(argv[0]);
     }
 
-    g_main_loop_run(main_loop);
+    g_main_loop_run(g_main_loop_new(NULL, TRUE));
 
     return (EXIT_SUCCESS);
 }

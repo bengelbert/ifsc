@@ -24,12 +24,13 @@ extern "C" {
 
 #include "global.h"
 
+#include "dbfc.h"
 #include "log.h"
 #include "common.h"
 #include "client.h"
 #include "lpc.h"
-#include "server.h"
-
+#include "service.h"
+    
 #ifdef	__cplusplus
 }
 #endif
