@@ -88,7 +88,7 @@ app_start_server(void)
     g_message("Starting app server!");
 
     //server_init(global_new());
-    service_socket_add(50000, G_CALLBACK(dbfc_connect_handler), NULL);
+    service_socket_add(50000, G_CALLBACK(gsm02_connect_handler), NULL);
 }
 
 /******************************************************************************/

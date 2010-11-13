@@ -1,15 +1,15 @@
 /**
- * @file    dbfc.h
+ * @file    gsm02.h
  */
 
-#ifndef _DBFC_H
-#define _DBFC_H
+#ifndef _GSM02_H
+#define _GSM02_H
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
 gboolean
-dbfc_connect_handler(GThreadedSocketService * service,
+gsm02_connect_handler(GThreadedSocketService * service,
         GSocketConnection * connection,
         GSocketListener * listener,
         gpointer user_data);
@@ -19,4 +19,4 @@ dbfc_connect_handler(GThreadedSocketService * service,
 }
 #endif
 
-#endif /* _DBFC_H */
+#endif /* _GSM02_H */
