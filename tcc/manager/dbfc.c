@@ -131,13 +131,6 @@ dbfc_data_dump(guchar *buffer,
 /**
  * 
  * @param dbfc
- */
-static void
-dbfc_destroy(dbfc_t *dbfc);
-
-/**
- * 
- * @param dbfc
  * @param offset
  */
 static void
@@ -263,22 +256,6 @@ service_stream_new(GSocketConnection *connection);
  */
 static dbfc_packet_header_t *
 dbfc_unpack_header(gpointer buffer);
-
-/******************************************************************************/
-
-/*
- * Function definitions
- */
-static void
-dbfc_assert(dbfc_t *dbfc)
-{
-    g_assert(dbfc);
-    g_assert(dbfc->buffer);
-    g_assert(dbfc->buffer->in);
-    g_assert(dbfc->stream);
-    g_assert(dbfc->stream->in);
-    g_assert(dbfc->stream->out);
-}
 
 /******************************************************************************/
 
