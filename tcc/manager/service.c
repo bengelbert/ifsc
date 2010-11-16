@@ -57,28 +57,3 @@ service_socket_add(guint16 port,
 }
 
 /******************************************************************************/
-
-const guint8 *
-service_socket_address_to_bytes(GSocketAddress *address)
-{
-    GInetAddress *inet_address;
-
-    inet_address = g_inet_socket_address_get_address(G_INET_SOCKET_ADDRESS(address));
-
-    return g_inet_address_to_bytes(inet_address);
-}
-
-/******************************************************************************/
-
-gchar *
-service_socket_address_to_string(GSocketAddress *address)
-{
-    GInetAddress *inet_address;
-
-    inet_address = g_inet_socket_address_get_address(G_INET_SOCKET_ADDRESS(address));
-
-    return g_inet_address_to_string(inet_address);
-}
-
-/******************************************************************************/
-
