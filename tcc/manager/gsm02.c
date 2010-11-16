@@ -34,23 +34,13 @@
  * Type definitions
  */
 typedef struct gsm02_s gsm02_t;
-typedef struct gsm02_buffer_s gsm02_buffer_t;
 typedef struct gsm02_packet_header_s gsm02_packet_header_t;
-typedef struct gsm02_stream_s gsm02_stream_t;
 typedef struct gsm02_tags_s gsm02_tags_t;
 
 struct gsm02_s {
-    gsm02_buffer_t *buffer;
-    gsm02_stream_t *stream;
+    service_t *service;
     gsm02_tags_t *tags;
     GMainLoop *loop;
-};
-
-/******************************************************************************/
-
-struct gsm02_buffer_s {
-    guchar *in;
-    gssize in_offset;
 };
 
 /******************************************************************************/
@@ -89,13 +79,6 @@ struct gsm02_tags_s {
  */
 /**
  * 
- * @return 
- */
-static gsm02_buffer_t *
-gsm02_buffer_new(void);
-
-/**
- * 
  * @param buffer
  * @param len
  */
@@ -109,14 +92,6 @@ gsm02_data_dump(guchar *buffer,
  */
 static void
 gsm02_destroy(gsm02_t *self);
-
-/**
- * 
- * @param gsm02
- * @param offset
- */
-static void
-gsm02_input_stream_read_async(gsm02_t *self);
 
 /**
  * 
@@ -196,54 +171,11 @@ gsm02_send_startup_channel(gsm02_t *self);
 
 /**
  * 
- * @param stream
- */
-static void
-gsm02_stream_free(gsm02_stream_t *stream);
-
-/**
- * 
- * @param connection
- * @return 
- */
-static gsm02_stream_t *
-gsm02_stream_new(GSocketConnection *connection);
-
-/**
- * 
  * @param buffer
  * @return
  */
 static gsm02_packet_header_t *
 gsm02_unpack_header(gpointer buffer);
-
-/******************************************************************************/
-
-static void
-gsm02_buffer_free(gsm02_buffer_t *buffer)
-{
-    g_assert(buffer);
-
-    if (buffer->in) {
-        g_free(buffer->in);
-    }
-}
-
-/******************************************************************************/
-
-static gsm02_buffer_t *
-gsm02_buffer_new(void)
-{
-    gsm02_buffer_t *buffer = NULL;
-
-    buffer = g_new0(gsm02_buffer_t, 1);
-    g_assert(buffer);
-
-    buffer->in = g_new0(guchar, SERVICE_BUFFER_LEN);
-    g_assert(buffer->in);
-
-    return buffer;
-}
 
 /******************************************************************************/
 
@@ -253,7 +185,7 @@ gsm02_connect_handler(GThreadedSocketService *service,
         GSocketListener *listener,
         gpointer user_data)
 {
-    gsm02_t *gsm02 = NULL;
+    gsm02_t *obj = NULL;
 
     g_assert(service);
     g_assert(connection);
@@ -262,42 +194,16 @@ gsm02_connect_handler(GThreadedSocketService *service,
 
     message("GSM02", "EVENT --------- [ CONNECTED ]");
 
-    gsm02 = gsm02_new(connection);
-    gsm02->loop = g_main_loop_new(NULL, FALSE);
+    obj = gsm02_new(connection);
+    obj->loop = g_main_loop_new(NULL, FALSE);
 
-    gsm02_input_stream_read_async(gsm02);
+    service_input_stream_read_async(obj->service, gsm02_read_data, obj);
 
-    gsm02->tags->send_ping = g_timeout_add(10000, gsm02_send_keep_alive, gsm02);
+    obj->tags->send_ping = g_timeout_add(10000, gsm02_send_keep_alive, obj);
 
-    g_main_loop_run(gsm02->loop);
+    g_main_loop_run(obj->loop);
 
     return TRUE;
-}
-
-/******************************************************************************/
-
-static void
-gsm02_data_dump(guchar *buffer,
-        gssize len)
-{
-    gchar dump[4096];
-    gint i, j;
-    gint dec = 0;
-
-    g_assert(buffer);
-
-    memset(dump, 0, sizeof (dump));
-    for (i = 0, j = 0; i < len; i++, j += 3) {
-
-        if (!(i % 10)) {
-            g_snprintf(&dump[j + dec], 2, "\n");
-            dec += 1;
-        }
-
-        g_snprintf(&dump[j + dec], 4, "%02X ", buffer[i]);
-    }
-
-    debug("GSM02", "\n%s\n", dump);
 }
 
 /******************************************************************************/
@@ -310,8 +216,7 @@ gsm02_destroy(gsm02_t *self)
 
     message("GSM02", "EVENT --------- [ DISCONNECTED ]");
 
-    gsm02_buffer_free(self->buffer);
-    gsm02_stream_free(self->stream);
+    service_free(self->service);
 
     g_main_loop_quit(self->loop);
     g_main_loop_unref(self->loop);
@@ -319,24 +224,6 @@ gsm02_destroy(gsm02_t *self)
     g_source_remove(self->tags->send_ping);
 
     g_free(self);
-}
-
-/******************************************************************************/
-
-static void
-gsm02_input_stream_read_async(gsm02_t *self)
-{
-    g_assert(self);
-    g_assert(self->stream);
-    g_assert(self->stream->in);
-
-    g_input_stream_read_async(self->stream->in,
-            self->buffer->in,
-            SERVICE_BUFFER_LEN,
-            G_PRIORITY_DEFAULT,
-            NULL,
-            gsm02_read_data,
-            self);
 }
 
 /******************************************************************************/
@@ -417,46 +304,22 @@ gsm02_make_startup_channel(GByteArray *message)
 static gsm02_t *
 gsm02_new(GSocketConnection *connection)
 {
-    gsm02_t *gsm02 = NULL;
+    gsm02_t *obj = NULL;
 
     g_assert(connection);
 
-    gsm02 = g_new0(gsm02_t, 1);
+    obj = g_new0(gsm02_t, 1);
 
-    g_assert(gsm02);
+    g_assert(obj);
 
-    gsm02->buffer = gsm02_buffer_new();
-    gsm02->stream = gsm02_stream_new(connection);
-    gsm02->tags = g_new0(gsm02_tags_t, 1);
+    obj->service = service_new(connection);
+    obj->tags = g_new0(gsm02_tags_t, 1);
 
-    g_assert(gsm02->buffer);
-    g_assert(gsm02->stream);
-    g_assert(gsm02->tags);
+    g_assert(obj->buffer);
+    g_assert(obj->service);
+    g_assert(obj->tags);
 
-    return gsm02;
-}
-
-/******************************************************************************/
-
-static void
-gsm02_output_stream_write(gsm02_t *self,
-        GByteArray *message)
-{
-    GError *error = NULL;
-
-    g_assert(self);
-    g_assert(self->stream);
-    g_assert(self->stream->out);
-    g_assert(message);
-
-    if (message->len > 0) {
-        g_output_stream_write(self->stream->out,
-                message->data,
-                message->len,
-                NULL,
-                &error);
-        g_assert_no_error(error);
-    }
+    return obj;
 }
 
 /******************************************************************************/
@@ -466,15 +329,13 @@ gsm02_read_data(GObject *source,
         GAsyncResult *result,
         gpointer user_data)
 {
-    gsm02_t *gsm02 = user_data;
+    gsm02_t *obj = user_data;
     GError *error = NULL;
     gsm02_packet_header_t *header = NULL;
     GInputStream *in = G_INPUT_STREAM(source);
     gssize nread;
 
-    g_assert(gsm02);
-    g_assert(gsm02->buffer);
-    g_assert(gsm02->buffer->in);
+    g_assert(obj);
 
     nread = g_input_stream_read_finish(in, result, &error);
     g_assert_no_error(error);
@@ -482,14 +343,14 @@ gsm02_read_data(GObject *source,
     if (nread > 0) {
 
         if (nread >= (gssize) GSM02_PACKET_HEADER_LEN) {
-            gsm02_data_dump(gsm02->buffer->in, nread);
-            header = gsm02_unpack_header(gsm02->buffer->in);
-            gsm02_recv_pack_handler(gsm02, header->cmd);
+            service_stream_buffer_dump(obj->service, nread);
+            header = gsm02_unpack_header(obj->buffer->in);
+            gsm02_recv_pack_handler(obj, header->cmd);
         }
 
-        gsm02_input_stream_read_async(gsm02);
+        service_input_stream_read_async(obj->service, gsm02_read_data, obj);
     } else {
-        gsm02_destroy(gsm02);
+        gsm02_destroy(obj);
     }
 }
 
@@ -543,7 +404,7 @@ gsm02_send_conf(gsm02_t *self)
     message = gsm02_make_conf(message);
     message = gsm02_make_header(message, GSM02_CMD_SEND_CONF);
 
-    gsm02_output_stream_write(self, message);
+    service_output_stream_write(self->service, message);
 
     g_byte_array_free(message, TRUE);
 }
@@ -564,7 +425,7 @@ gsm02_send_keep_alive(gpointer user_data)
 
     message = gsm02_make_header(message, GSM02_CMD_SEND_KEEP_ALIVE);
 
-    gsm02_output_stream_write(gsm02, message);
+    service_output_stream_write(gsm02->service, message);
 
     g_byte_array_free(message, TRUE);
 
@@ -585,7 +446,7 @@ gsm02_send_neighbours_list(gsm02_t *self)
     message = gsm02_make_neighbours_list(message);
     message = gsm02_make_header(message, GSM02_CMD_SEND_NEIGHBOURS_LIST);
 
-    gsm02_output_stream_write(self, message);
+    service_output_stream_write(self->service, message);
 
     g_byte_array_free(message, TRUE);
 }
@@ -604,46 +465,9 @@ gsm02_send_startup_channel(gsm02_t *self)
     message = gsm02_make_startup_channel(message);
     message = gsm02_make_header(message, GSM02_CMD_SEND_STARTUP_CHANNEL);
 
-    gsm02_output_stream_write(self, message);
+    service_output_stream_write(self->service, message);
 
     g_byte_array_free(message, TRUE);
-}
-
-/******************************************************************************/
-
-static void
-gsm02_stream_free(gsm02_stream_t *stream)
-{
-    GError *error = NULL;
-
-    g_assert(stream);
-
-    if (stream->in) {
-        g_input_stream_close(stream->in, NULL, &error);
-        g_assert_no_error(error);
-    }
-
-    if (stream->in) {
-        g_output_stream_close(stream->out, NULL, &error);
-        g_assert_no_error(error);
-    }
-}
-
-/******************************************************************************/
-
-static gsm02_stream_t *
-gsm02_stream_new(GSocketConnection *connection)
-{
-    gsm02_stream_t *stream = NULL;
-
-    stream = g_new0(gsm02_stream_t, 1);
-
-    g_assert(stream);
-
-    stream->in = g_io_stream_get_input_stream(G_IO_STREAM(connection));
-    stream->out = g_io_stream_get_output_stream(G_IO_STREAM(connection));
-
-    return stream;
 }
 
 /******************************************************************************/
