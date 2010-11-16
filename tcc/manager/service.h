@@ -16,6 +16,8 @@ extern "C" {
 
 #define SERVICE_BUFFER_LEN    4096
 
+typedef struct service_s service_t;
+
 /**
  *
  * @param message

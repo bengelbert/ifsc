@@ -26,6 +26,7 @@ extern "C" {
 #include "log.h"
 #include "common.h"
 #include "gsm02.h"
+#include "script.h"
 #include "service.h"
     
 #ifdef	__cplusplus

@@ -2,6 +2,15 @@
 
 /******************************************************************************/
 
+struct service_s {
+//    gsm02_buffer_t *buffer;
+//    gsm02_stream_t *stream;
+//    gsm02_tags_t *tags;
+    GMainLoop *loop;
+};
+
+/******************************************************************************/
+
 GByteArray *
 service_message_append_16(GByteArray *message,
         guint data)
