@@ -14,6 +14,30 @@ extern "C" {
 
 #include "wrapper.h"
 
+#define SERVICE_BUFFER_LEN    4096
+
+/**
+ *
+ * @param message
+ * @param data
+ * @return
+ */
+GByteArray *
+service_message_append_16(GByteArray *message,
+        guint data);
+
+/**
+ *
+ * @param message
+ * @param data
+ * @param len
+ * @return
+ */
+GByteArray *
+service_message_append_string_sized(GByteArray *message,
+        gchar *data,
+        gsize len);
+
 /**
  *
  * @param port

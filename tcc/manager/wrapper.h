@@ -15,7 +15,6 @@ extern "C" {
 
 #include <gio/gio.h>
 #include <glib.h>
-#include <gnet.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -26,9 +25,7 @@ extern "C" {
 
 #include "log.h"
 #include "common.h"
-#include "client.h"
 #include "gsm02.h"
-#include "lpc.h"
 #include "service.h"
     
 #ifdef	__cplusplus

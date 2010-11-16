@@ -4,11 +4,15 @@
 /*
  * Constants
  */
-#define GSM02_BUFFER_LEN    4096
 #define GSM02_CBCH_LEN      10
 #define GSM02_IP_LEN        16
 
 #define GSM02_CMD_RECV_KEEP_ALIVE       0x00
+#define GSM02_CMD_RECV_LOC_UPD_REJ      0x02
+#define GSM02_CMD_RECV_CALL             0x03
+#define GSM02_CMD_RECV_SMS              0x04
+#define GSM02_CMD_RECV_DETACH           0x05
+#define GSM02_CMD_RECV_LOC_UPD_ACC      0x06
 #define GSM02_CMD_RECV_SCANNED_NEIGH    0x08
 #define GSM02_CMD_RECV_CONF_REQUEST     0x09
 
@@ -18,7 +22,7 @@
 #define GSM02_CMD_SEND_NEIGHBOURS_LIST  0x26
 
 #define GSM02_CONF_APPLICATION_NGCELL   4
-#define GSM02_CONF_CHANNEL_INIT         588
+#define GSM02_CONF_CHANNEL_INIT         90
 #define GSM02_CONF_CHANNEL_RANGE        5
 #define GSM02_CONF_MODE_RASTER          0
 
@@ -104,7 +108,7 @@ gsm02_data_dump(guchar *buffer,
  * @param gsm02
  */
 static void
-gsm02_destroy(gsm02_t *gsm02);
+gsm02_destroy(gsm02_t *self);
 
 /**
  * 
@@ -112,7 +116,7 @@ gsm02_destroy(gsm02_t *gsm02);
  * @param offset
  */
 static void
-gsm02_input_stream_read_async(gsm02_t *gsm02);
+gsm02_input_stream_read_async(gsm02_t *self);
 
 /**
  * 
@@ -142,28 +146,6 @@ static gsm02_t *
 gsm02_new(GSocketConnection *connection);
 
 /**
- *
- * @param message
- * @param data
- * @return
- */
-static GByteArray *
-gsm02_packet_append_16(GByteArray *message,
-        guint data);
-
-/**
- * 
- * @param message
- * @param data
- * @param len
- * @return
- */
-static GByteArray *
-gsm02_packet_append_string_sized(GByteArray *message,
-        gchar *data,
-        gsize len);
-
-/**
  * 
  * @param source
  * @param result
@@ -180,7 +162,7 @@ gsm02_read_data(GObject *source,
  * @param command
  */
 static void
-gsm02_recv_pack_handler(gsm02_t *gsm02,
+gsm02_recv_pack_handler(gsm02_t *self,
         guchar command);
 
 /**
@@ -196,21 +178,21 @@ gsm02_send_keep_alive(gpointer user_data);
  * @param gsm02
  */
 static void
-gsm02_send_conf(gsm02_t *gsm02);
+gsm02_send_conf(gsm02_t *self);
 
 /**
  * 
  * @param gsm02
  */
 static void
-gsm02_send_neighbours_list(gsm02_t *gsm02);
+gsm02_send_neighbours_list(gsm02_t *self);
 
 /**
  * 
  * @param gsm02
  */
 static void
-gsm02_send_startup_channel(gsm02_t *gsm02);
+gsm02_send_startup_channel(gsm02_t *self);
 
 /**
  * 
@@ -257,7 +239,7 @@ gsm02_buffer_new(void)
     buffer = g_new0(gsm02_buffer_t, 1);
     g_assert(buffer);
 
-    buffer->in = g_new0(guchar, GSM02_BUFFER_LEN);
+    buffer->in = g_new0(guchar, SERVICE_BUFFER_LEN);
     g_assert(buffer->in);
 
     return buffer;
@@ -277,6 +259,8 @@ gsm02_connect_handler(GThreadedSocketService *service,
     g_assert(connection);
 
     debug("GSM02", "listener(%p) data(%p)", listener, user_data);
+
+    message("GSM02", "EVENT --------- [ CONNECTED ]");
 
     gsm02 = gsm02_new(connection);
     gsm02->loop = g_main_loop_new(NULL, FALSE);
@@ -319,38 +303,40 @@ gsm02_data_dump(guchar *buffer,
 /******************************************************************************/
 
 static void
-gsm02_destroy(gsm02_t *gsm02)
+gsm02_destroy(gsm02_t *self)
 {
-    g_assert(gsm02);
-    g_assert(gsm02->loop);
+    g_assert(self);
+    g_assert(self->loop);
 
-    gsm02_buffer_free(gsm02->buffer);
-    gsm02_stream_free(gsm02->stream);
+    message("GSM02", "EVENT --------- [ DISCONNECTED ]");
 
-    g_main_loop_quit(gsm02->loop);
-    g_main_loop_unref(gsm02->loop);
+    gsm02_buffer_free(self->buffer);
+    gsm02_stream_free(self->stream);
 
-    g_source_remove(gsm02->tags->send_ping);
+    g_main_loop_quit(self->loop);
+    g_main_loop_unref(self->loop);
 
-    g_free(gsm02);
+    g_source_remove(self->tags->send_ping);
+
+    g_free(self);
 }
 
 /******************************************************************************/
 
 static void
-gsm02_input_stream_read_async(gsm02_t *gsm02)
+gsm02_input_stream_read_async(gsm02_t *self)
 {
-    g_assert(gsm02);
-    g_assert(gsm02->stream);
-    g_assert(gsm02->stream->in);
+    g_assert(self);
+    g_assert(self->stream);
+    g_assert(self->stream->in);
 
-    g_input_stream_read_async(gsm02->stream->in,
-            gsm02->buffer->in,
-            GSM02_BUFFER_LEN,
+    g_input_stream_read_async(self->stream->in,
+            self->buffer->in,
+            SERVICE_BUFFER_LEN,
             G_PRIORITY_DEFAULT,
             NULL,
             gsm02_read_data,
-            gsm02);
+            self);
 }
 
 /******************************************************************************/
@@ -360,21 +346,21 @@ gsm02_make_conf(GByteArray *message)
 {
     g_assert(message);
 
-    message = gsm02_packet_append_16(message, 1800);
-    message = gsm02_packet_append_16(message, GSM02_CONF_CHANNEL_INIT);
-    message = gsm02_packet_append_16(message, GSM02_CONF_CHANNEL_RANGE);
-    message = gsm02_packet_append_string_sized(message, "172.23.255.254", GSM02_IP_LEN);
-    message = gsm02_packet_append_string_sized(message, "172.23.255.254", GSM02_IP_LEN);
-    message = gsm02_packet_append_string_sized(message, "172.23.255.254", GSM02_IP_LEN);
-    message = gsm02_packet_append_16(message, 0x0724);
-    message = gsm02_packet_append_16(message, 0x0019);
-    message = gsm02_packet_append_16(message, 0x00AA);
-    message = gsm02_packet_append_16(message, 13);
-    message = gsm02_packet_append_string_sized(message, "", GSM02_CBCH_LEN);
-    message = gsm02_packet_append_16(message, GSM02_CONF_APPLICATION_NGCELL);
-    message = gsm02_packet_append_16(message, 15);
-    message = gsm02_packet_append_16(message, 1024);
-    message = gsm02_packet_append_16(message, GSM02_CONF_MODE_RASTER);
+    message = service_message_append_16(message, 900);
+    message = service_message_append_16(message, GSM02_CONF_CHANNEL_INIT);
+    message = service_message_append_16(message, GSM02_CONF_CHANNEL_RANGE);
+    message = service_message_append_string_sized(message, "172.23.255.254", GSM02_IP_LEN);
+    message = service_message_append_string_sized(message, "172.23.255.254", GSM02_IP_LEN);
+    message = service_message_append_string_sized(message, "172.23.255.254", GSM02_IP_LEN);
+    message = service_message_append_16(message, 0x0724);
+    message = service_message_append_16(message, 0x0019);
+    message = service_message_append_16(message, 0x00AA);
+    message = service_message_append_16(message, 13);
+    message = service_message_append_string_sized(message, "", GSM02_CBCH_LEN);
+    message = service_message_append_16(message, GSM02_CONF_APPLICATION_NGCELL);
+    message = service_message_append_16(message, 15);
+    message = service_message_append_16(message, 1024);
+    message = service_message_append_16(message, GSM02_CONF_MODE_RASTER);
 
     return message;
 }
@@ -408,8 +394,8 @@ gsm02_make_neighbours_list(GByteArray *message)
 {
     g_assert(message);
 
-    message = gsm02_packet_append_16(message, 0);
-    message = gsm02_packet_append_16(message, GSM02_ORIG_ARFCN);
+    message = service_message_append_16(message, 0);
+    message = service_message_append_16(message, GSM02_ORIG_ARFCN);
 
     return message;
 }
@@ -421,7 +407,7 @@ gsm02_make_startup_channel(GByteArray *message)
 {
     g_assert(message);
 
-    message = gsm02_packet_append_16(message, GSM02_STARTUP_CHANNEL);
+    message = service_message_append_16(message, GSM02_STARTUP_CHANNEL);
 
     return message;
 }
@@ -453,58 +439,24 @@ gsm02_new(GSocketConnection *connection)
 /******************************************************************************/
 
 static void
-gsm02_output_stream_write(gsm02_t *gsm02,
+gsm02_output_stream_write(gsm02_t *self,
         GByteArray *message)
 {
     GError *error = NULL;
 
-    g_assert(gsm02);
-    g_assert(gsm02->stream);
-    g_assert(gsm02->stream->out);
+    g_assert(self);
+    g_assert(self->stream);
+    g_assert(self->stream->out);
     g_assert(message);
 
     if (message->len > 0) {
-        g_output_stream_write(gsm02->stream->out,
+        g_output_stream_write(self->stream->out,
                 message->data,
                 message->len,
                 NULL,
                 &error);
         g_assert_no_error(error);
     }
-}
-
-/******************************************************************************/
-
-static GByteArray *
-gsm02_packet_append_16(GByteArray *message,
-        guint data)
-{
-    g_assert(message);
-
-    data = g_htons(data);
-
-    message = g_byte_array_append(message, (guint8 *) & data, sizeof (guint16));
-
-    return message;
-}
-
-/******************************************************************************/
-
-static GByteArray *
-gsm02_packet_append_string_sized(GByteArray *message,
-        gchar *data,
-        gsize len)
-{
-    gchar aux[GSM02_BUFFER_LEN] = {};
-
-    g_assert(data);
-    g_assert(message);
-
-    g_snprintf(aux, len, "%s", data);
-
-    message = g_byte_array_append(message, (guint8 *) & aux, len);
-
-    return message;
 }
 
 /******************************************************************************/
@@ -544,42 +496,54 @@ gsm02_read_data(GObject *source,
 /******************************************************************************/
 
 static void
-gsm02_recv_pack_handler(gsm02_t *gsm02,
+gsm02_recv_pack_handler(gsm02_t *self,
         guchar command)
 {
-    g_assert(gsm02);
+    g_assert(self);
 
     switch (command) {
+    case GSM02_CMD_RECV_CALL:
+        message("GSM02", "EVENT RECV ---- [ CALL ]");
+        break;
     case GSM02_CMD_RECV_CONF_REQUEST:
-        gsm02_send_conf(gsm02);
+        gsm02_send_conf(self);
+        break;
+    case GSM02_CMD_RECV_DETACH:
+        message("GSM02", "EVENT RECV ---- [ DETACH ]");
         break;
     case GSM02_CMD_RECV_KEEP_ALIVE:
-        message("GSM02", "Recv ping");
+        message("GSM02", "EVENT RECV ---- [ KEEP_ALIVE ]");
+        break;
+    case GSM02_CMD_RECV_LOC_UPD_ACC:
+        message("GSM02", "EVENT RECV ---- [ LOC_UPD_ACC ]");
+        break;
+    case GSM02_CMD_RECV_LOC_UPD_REJ:
+        message("GSM02", "EVENT RECV ---- [ LOC_UPD_REJ ]");
         break;
     case GSM02_CMD_RECV_SCANNED_NEIGH:
-        gsm02_send_startup_channel(gsm02);
-        gsm02_send_neighbours_list(gsm02);
+        gsm02_send_startup_channel(self);
+        gsm02_send_neighbours_list(self);
         break;
     default:
-        warning("GSM02", "Invalid command");
+        warning("GSM02", "Invalid command [ 0x%x ]", command);
     }
 }
 
 /******************************************************************************/
 
 static void
-gsm02_send_conf(gsm02_t *gsm02)
+gsm02_send_conf(gsm02_t *self)
 {
     GByteArray *message = NULL;
 
-    g_assert(gsm02);
+    g_assert(self);
 
     message = g_byte_array_new();
 
     message = gsm02_make_conf(message);
     message = gsm02_make_header(message, GSM02_CMD_SEND_CONF);
 
-    gsm02_output_stream_write(gsm02, message);
+    gsm02_output_stream_write(self, message);
 
     g_byte_array_free(message, TRUE);
 }
@@ -593,6 +557,8 @@ gsm02_send_keep_alive(gpointer user_data)
     GByteArray *message = NULL;
 
     g_assert(gsm02);
+
+    message("GSM02", "EVENT SEND ---- [ KEEP_ALIVE ]");
 
     message = g_byte_array_new();
 
@@ -608,18 +574,18 @@ gsm02_send_keep_alive(gpointer user_data)
 /******************************************************************************/
 
 static void
-gsm02_send_neighbours_list(gsm02_t *gsm02)
+gsm02_send_neighbours_list(gsm02_t *self)
 {
     GByteArray *message = NULL;
 
-    g_assert(gsm02);
+    g_assert(self);
 
     message = g_byte_array_new();
 
     message = gsm02_make_neighbours_list(message);
     message = gsm02_make_header(message, GSM02_CMD_SEND_NEIGHBOURS_LIST);
 
-    gsm02_output_stream_write(gsm02, message);
+    gsm02_output_stream_write(self, message);
 
     g_byte_array_free(message, TRUE);
 }
@@ -627,18 +593,18 @@ gsm02_send_neighbours_list(gsm02_t *gsm02)
 /******************************************************************************/
 
 static void
-gsm02_send_startup_channel(gsm02_t *gsm02)
+gsm02_send_startup_channel(gsm02_t *self)
 {
     GByteArray *message = NULL;
 
-    g_assert(gsm02);
+    g_assert(self);
 
     message = g_byte_array_new();
 
     message = gsm02_make_startup_channel(message);
     message = gsm02_make_header(message, GSM02_CMD_SEND_STARTUP_CHANNEL);
 
-    gsm02_output_stream_write(gsm02, message);
+    gsm02_output_stream_write(self, message);
 
     g_byte_array_free(message, TRUE);
 }

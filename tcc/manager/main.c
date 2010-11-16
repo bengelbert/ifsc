@@ -16,9 +16,7 @@ typedef struct app_entries_data_s   app_entries_data_t;
 /******************************************************************************/
 
 struct app_entries_data_s {
-    guint   client;
-    gchar ** device;
-    guint   server;
+    guint verbose;
 };
 
 /******************************************************************************/
@@ -33,9 +31,7 @@ struct app_s {
  */
 static app_t app;
 static GOptionEntry entries[] = {
-    {"client", 'c', 0, G_OPTION_ARG_NONE, &app.cmdline.client, "Start client!", NULL},
-    {"device", 'd', 0, G_OPTION_ARG_STRING_ARRAY, &app.cmdline.device, "Device type [lpc|omap]", NULL},
-    {"server", 's', 0, G_OPTION_ARG_NONE, &app.cmdline.server, "Start server!", NULL},
+    {"verbose", 'v', 0, G_OPTION_ARG_INT, &app.cmdline.verbose, "Verbose level!", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}
 };
 
@@ -44,22 +40,12 @@ static GOptionEntry entries[] = {
  * App function definitions
  */
 static void
-app_exit(gchar * name)
-{
-    g_print("Use: %s [OPTION...]\n", name);
-    g_print("Try \"%s --help\" for more informations.\n", name);
-    exit(EXIT_FAILURE);
-}
-
-/******************************************************************************/
-
-static void
 app_init_cmdline(gint * argc, gchar *** argv)
 {
     GOptionContext *    context     = NULL;
     GError *            error       = NULL;
     
-    context = g_option_context_new("- Server/client application");
+    context = g_option_context_new("- Server application");
     g_option_context_add_main_entries(context, entries, NULL);
     if (!g_option_context_parse(context, argc, argv, &error)) {
         g_error("Option parser failed: %s", error->message);
@@ -71,24 +57,9 @@ app_init_cmdline(gint * argc, gchar *** argv)
 /******************************************************************************/
 
 static void
-app_start_client(void)
-{
-    g_message("Starting app client!");
-
-    client_init(global_new());
-
-    return;
-}
-
-/******************************************************************************/
-
-static void
 app_start_server(void)
 {
-    g_message("Starting app server!");
-
-    //server_init(global_new());
-    service_socket_add(50000, G_CALLBACK(gsm02_connect_handler), NULL);
+    service_socket_add(50050, G_CALLBACK(gsm02_connect_handler), NULL);
 }
 
 /******************************************************************************/
@@ -101,14 +72,10 @@ int main(int argc, char * argv[])
     g_thread_init(NULL);
 
     app_init_cmdline(&argc, &argv);
-  
-    if (app.cmdline.server == true) {
-        app_start_server();
-    } else if (app.cmdline.client == true) {
-        app_start_client();
-    } else {
-       app_exit(argv[0]);
-    }
+
+    log_set_level("GSM02", app.cmdline.verbose);
+
+    app_start_server();
 
     g_main_loop_run(g_main_loop_new(NULL, TRUE));
 
