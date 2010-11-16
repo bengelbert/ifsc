@@ -1,0 +1,78 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution version="2" Name="embedded" >
+  <project Name="embedded" >
+    <configuration arm_target_loader_parameter="12000000" Target="LPC2368" arm_target_flash_loader_file_path="$(TargetsDir)/Philips_LPC210X/Release/Loader_lpc2300.elf" arm_simulator_memory_simulation_parameter="LPC23;0x80000;0x8000;0x10000;0x10000" property_groups_file_path="$(TargetsDir)/Philips_LPC210X/propertyGroups23xx.xml" oscillator_frequency="12MHz" linker_memory_map_file="$(TargetsDir)/Philips_LPC210X/Philips_LPC2368_MemoryMap.xml" gcc_entry_point="reset_handler" build_remove_unused_symbols="No" c_preprocessor_definitions="GCC_ARM7;SUPERVISOR_START;VECTORED_IRQ_INTERRUPTS;PACK_STRUCT_END=__attribute__((packed));ALIGN_STRUCT_END=__attribute__((aligned(4)))" arm_architecture="v4T" linker_additional_files="C:/Program Files/Rowley Associates Limited/CrossWorks for ARM 1.6/lib/liblpc2000$(LibExt)$(LIB)" link_standard_libraries_directory="$(StudioDir)/lib" c_user_include_directories=".;$(ProjectDir)\\rtos\\include;$(ProjectDir)\\rtos\\GCC\\ARM7_LPC2000;$(ProjectDir)\\common\\include;$(ProjectDir)\\lcd;$(ProjectDir)\\webserver;$(ProjectDir)\\uip;$(ProjectDir)\\uart;$(ProjectDir)\\partest;" project_directory="" link_include_startup_code="No" gcc_optimization_level="Level 1" arm_target_flash_loader_type="LIBMEM RPC Loader" project_type="Executable" c_additional_options="" linker_printf_fmt_level="long" arm_linker_stack_size="10" Name="Common" c_system_include_directories="$(StudioDir)include" arm_target_debug_interface_type="ARM7TDI" arm_core_type="ARM7TDMI-S" arm_simulator_memory_simulation_filename="$(TargetsDir)/Philips_LPC210X/LPC2000SimulatorMemory.dll" arm_linker_svc_stack_size="1024" />
+    <configuration linker_section_placement_file="$(StudioDir)/targets/sram_placement.xml" target_reset_script="SRAMReset()" Name="RAM" Placement="RAM" />
+    <configuration arm_target_flash_loader_file_path="$(TargetsDir)/Philips_LPC210X/Release/Loader_lpc2300.elf" linker_section_placement_file="$(StudioDir)/targets/flash_placement.xml" target_reset_script="FLASHReset()" arm_target_flash_loader_type="LIBMEM RPC Loader" Name="Flash" Placement="Flash" />
+    <folder Name="Demo Source" >
+      <configuration filter="c;cpp;cxx;cc;h;s;asm;inc" Name="Common" />
+      <file file_name="main.c" Name="main.c" />
+      <file file_name="webserver/EMAC_ISR.c" Name="EMAC_ISR.c" >
+        <configuration arm_instruction_set="ARM" Name="THUMB" />
+        <configuration gcc_optimization_level="Level 1" build_exclude_from_build="No" Name="ARM Flash Debug" />
+      </file>
+      <file file_name="webserver/emac.c" Name="emac.c" >
+        <configuration build_exclude_from_build="No" Name="ARM Flash Debug" />
+        <configuration asm_additional_options="" Name="Common" />
+      </file>
+      <file file_name="client/client.c" Name="client.c" />
+      <file file_name="partest/ParTest.c" Name="ParTest.c" />
+      <file file_name="lcd/lcd.c" Name="lcd.c" />
+      <file file_name="client/dgt.c" Name="dgt.c" />
+    </folder>
+    <folder Name="System Files" >
+      <file file_name="$(StudioDir)/source/crt0.s" Name="crt0.s" />
+      <file file_name="$(TargetsDir)/Philips_LPC210X/LPC230x.c" Name="LPC230x.c" />
+      <file file_name="$(TargetsDir)/Philips_LPC210X/Philips_LPC210X_Target.js" Name="Philips_LPC210X_Target.js" >
+        <configuration Name="Common" file_type="Reset Script" />
+      </file>
+      <file file_name="$(TargetsDir)/Philips_LPC210X/VIC_PL192.c" Name="VIC_PL192.c" />
+      <file file_name="$(TargetsDir)/Philips_LPC210X/VIC_PL192_irq_handler.s" Name="VIC_PL192_irq_handler.s" />
+      <file file_name="$(StudioDir)/targets/Philips_LPC210X/Philips_LPC2368_MemoryMap.xml" Name="Philips_LPC2368_MemoryMap.xml" />
+      <file file_name="Philips_LPC230X_Startup.s" Name="Philips_LPC230X_Startup.s" >
+        <configuration build_exclude_from_build="No" Name="ARM Flash Release" />
+      </file>
+    </folder>
+    <folder Name="FreeRTOS.org Source" >
+      <file file_name="rtos/list.c" Name="list.c" />
+      <file file_name="rtos/queue.c" Name="queue.c" />
+      <file file_name="rtos/portable/GCC/ARM7_LPC23xx/port.c" Name="port.c" />
+      <file file_name="rtos/portable/GCC/ARM7_LPC23xx/portISR.c" Name="portISR.c" >
+        <configuration arm_instruction_set="ARM" Name="Common" />
+      </file>
+      <file file_name="rtos/portable/MemMang/heap_2.c" Name="heap_2.c" />
+      <file file_name="rtos/tasks.c" Name="tasks.c" />
+    </folder>
+    <configuration linker_scanf_fmt_level="int" linker_keep_symbols="_vectors" c_preprocessor_definitions="" gcc_optimization_level="Level 1" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_additional_options="" linker_scanf_character_group_matching_enabled="No" linker_printf_fmt_level="int" Name="ARM Flash Debug" c_system_include_directories="$(StudioDir)/include;$(PackagesDir)/include" linker_output_format="hex" />
+    <folder Name="uIP Source" >
+      <file file_name="webserver/uIP_Task.c" Name="uIP_Task.c" >
+        <configuration build_exclude_from_build="No" Name="ARM Flash Debug" />
+        <configuration gcc_optimization_level="Optimize For Size" Name="Common" />
+      </file>
+      <file file_name="uip/uip_arp.c" Name="uip_arp.c" >
+        <configuration build_exclude_from_build="No" Name="ARM Flash Debug" />
+      </file>
+      <file file_name="uip/psock.c" Name="psock.c" >
+        <configuration build_exclude_from_build="No" Name="ARM Flash Debug" />
+      </file>
+      <file file_name="uip/timer.c" Name="timer.c" >
+        <configuration build_exclude_from_build="No" Name="ARM Flash Debug" />
+      </file>
+      <file file_name="uip/uip.c" Name="uip.c" >
+        <configuration build_exclude_from_build="No" Name="ARM Flash Debug" />
+      </file>
+    </folder>
+    <configuration c_preprocessor_definitions="THUMB_INTERWORK" Name="THUMB" />
+    <configuration c_preprocessor_definitions="STARTUP_FROM_RESET;ROWLEY_LPC23xx" c_user_include_directories=".;.\\client" gcc_optimization_level="Optimize For Size" Name="ARM Flash Release" linker_output_format="hex" />
+    <configuration arm_linker_fiq_stack_size="0" arm_linker_stack_size="0" Name="THUMB Flash Debug" arm_linker_svc_stack_size="512" arm_linker_heap_size="0" />
+  </project>
+  <configuration inherited_configurations="ARM;Flash;Debug" c_user_include_directories=".;.\\commom;.\\client" Name="ARM Flash Debug" c_system_include_directories="$(StudioDir)/include;$(PackagesDir)/include" linker_output_format="hex" />
+  <configuration arm_library_instruction_set="ARM" c_preprocessor_definitions="__ARM" arm_instruction_set="ARM" hidden="Yes" Name="ARM" />
+  <configuration c_preprocessor_definitions="__FLASH_BUILD" hidden="Yes" Name="Flash" />
+  <configuration c_preprocessor_definitions="DEBUG" link_include_startup_code="No" gcc_optimization_level="None" build_debug_information="Yes" hidden="Yes" Name="Debug" />
+  <configuration linker_memory_map_file="D:/Fah-Cool/SVN/kit_lpc2368/trunk/rtos/projects/started/ARM Flash Release/started.map" build_remove_unused_symbols="No" inherited_configurations="ARM;Flash;Release" linker_additional_files="C:\\Program Files\\Rowley Associates Limited\\CrossWorks for ARM 1.6\\lib\\liblpc2000_v4t_a_le.a" c_user_include_directories=".;./lib;./commom" gcc_optimization_level="Optimize For Size" Name="ARM Flash Release" c_system_include_directories="$(StudioDir)/include;$(PackagesDir)/include" linker_output_format="hex" />
+  <configuration c_preprocessor_definitions="NDEBUG" link_include_startup_code="No" gcc_optimization_level="Level 1" build_debug_information="No" hidden="Yes" Name="Release" />
+  <configuration inherited_configurations="THUMB;Flash;Debug" Name="THUMB Flash Debug" />
+  <configuration arm_library_instruction_set="THUMB" c_preprocessor_definitions="__THUMB" arm_instruction_set="THUMB" hidden="Yes" Name="THUMB" />
+  <configuration gcc_optimization_level="Optimize For Size" arm_linker_stack_size="256" Name="Common" />
+</solution>
