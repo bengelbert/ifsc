@@ -16,8 +16,17 @@ extern "C" {
 
 #define SERVICE_BUFFER_LEN    4096
 
+/******************************************************************************/
+/*
+ * Type definitions
+ */
 typedef struct service_s service_t;
+typedef void (*service_func_t)(gpointer user_data);
 
+/******************************************************************************/
+/*
+ * Function prototypes
+ */
 /**
  * 
  * @param self
@@ -36,13 +45,15 @@ service_get_input_stream(service_t *self);
 /**
  * 
  * @param self
- * @param func
+ * @param async_func
+ * @param destroy_func
  * @param user_data
  */
 void
 service_input_stream_read_async(service_t *self,
-    GAsyncReadyCallback func,
-    gpointer user_data);
+        service_func_t async_func,
+        GDestroyNotify destroy_func,
+        gpointer user_data);
 
 /**
  *
@@ -68,6 +79,40 @@ service_message_append_string_sized(GByteArray *message,
 
 /**
  * 
+ * @param self
+ * @return 
+ */
+guint8
+service_message_header_get_command(service_t *self);
+
+/**
+ *
+ * @param message
+ * @param cmd
+ * @param payload_len
+ * @return
+ */
+GByteArray *
+service_message_header_make(GByteArray *message,
+        guchar cmd);
+
+/**
+ *
+ * @return
+ */
+gssize
+service_message_header_size(void);
+
+/**
+ *
+ * @param buffer
+ * @return
+ */
+void
+service_message_header_unpack(service_t *self);
+
+/**
+ * 
  * @param connection
  * @return
  */
@@ -81,7 +126,7 @@ service_new(GSocketConnection *connection);
  */
 void
 service_output_stream_write(service_t *self,
-    GByteArray *message);
+        GByteArray *message);
 
 /**
  *
@@ -90,9 +135,9 @@ service_output_stream_write(service_t *self,
  * @param data
  */
 void
-service_socket_add(guint16   port,
-                   GCallback func,
-                   gpointer  data);
+service_socket_add(guint16 port,
+        GCallback func,
+        gpointer data);
 
 /**
  * 
@@ -101,7 +146,7 @@ service_socket_add(guint16   port,
  */
 void
 service_stream_buffer_dump(service_t *self,
-    gssize len);
+        gssize len);
 
 #ifdef	__cplusplus
 }
