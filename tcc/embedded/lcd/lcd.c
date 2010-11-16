@@ -28,6 +28,7 @@
 #include "lcd.h"
 #include "queue.h"
 #include "task.h"
+#include "webserver/uip-conf.h"
 
 /******************************************************************************
  **
@@ -135,17 +136,25 @@ static lcd_setup_t xMessage;
  ** 2.6 Private function prototypes (defined in Section 5)
  ******************************************************************************/
 static DWORD dwReadStat(void);
-static DWORD dwWaitBusy(void);
-static DWORD dwWriteByte(BYTE byChar);
+static uint32_t lcd_wait_busy(void);
+static void lcd_write_byte(uint8_t data);
 static DWORD dwWriteByteNibble(BYTE byNibble);
-static DWORD dwWriteCmd(BYTE byCmd);
-static DWORD dwWriteData(BYTE byData);
 
-/******************************************************************************
- **
- ** 3 PUBLIC FUNCTIONS (declared in Section 2.5 on lcd.h)
- **
- ******************************************************************************/
+/**
+ * 
+ * @desc Write command to LCD controller.
+ * @param command byte
+ */
+static void
+lcd_write_command(uint8_t command);
+
+/**
+ * 
+ * @desc  Write data to LCD controller
+ * @param data byte
+ */
+static void
+lcd_write_data(uint8_t data);
 
 /******************************************************************************
  ** Function    : lcd_barGraph
@@ -186,7 +195,7 @@ DWORD lcd_barGraph(DWORD dwValue, DWORD dwSize)
  ******************************************************************************/
 DWORD lcd_clear(void)
 {
-    dwWriteCmd(CMD_CLEAR_DISPLAY);
+    lcd_write_command(CMD_CLEAR_DISPLAY);
     lcd_goToXY(1, 1);
     return 0;
 }
@@ -202,7 +211,7 @@ DWORD lcd_clear(void)
  ******************************************************************************/
 DWORD lcd_cursorOff(void)
 {
-    dwWriteCmd(CMD_DISPLAY_CONTROL | DCTRL_DISPLAY_ON | DCTRL_CURSOR_OFF);
+    lcd_write_command(CMD_DISPLAY_CONTROL | DCTRL_DISPLAY_ON | DCTRL_CURSOR_OFF);
     return 0;
 }
 
@@ -222,9 +231,9 @@ DWORD lcd_goToXY(BYTE byColumn, BYTE byRow)
 
     x = --byColumn;
     if (--byRow) {
-        dwWriteCmd(CMD_DDRAM_ADDR_SET | DDRAM_LINE_2 | x);
+        lcd_write_command(CMD_DDRAM_ADDR_SET | DDRAM_LINE_2 | x);
     } else {
-        dwWriteCmd(CMD_DDRAM_ADDR_SET | DDRAM_LINE_1 | x);
+        lcd_write_command(CMD_DDRAM_ADDR_SET | DDRAM_LINE_1 | x);
     }
     lcdPtr = byRow * 16 + byColumn;
     return 0;
@@ -254,9 +263,9 @@ DWORD lcd_init(void)
     dwWriteByteNibble(0x3);
     dwWriteByteNibble(0x2);
 
-    dwWriteCmd(CMD_FUNCTION_SET | FSET_4BITS | FSET_TWO_LINES | FSET_MATRIX_5_7);
-    dwWriteCmd(CMD_ENTRY_MODE_SET | EMODE_CURSOR | EMODE_SHIFT_RIGHT);
-    dwWriteCmd(CMD_DISPLAY_CONTROL | DCTRL_DISPLAY_ON | DCTRL_CURSOR_OFF | DCTRL_BLINK_ON);
+    lcd_write_command(CMD_FUNCTION_SET | FSET_4BITS | FSET_TWO_LINES | FSET_MATRIX_5_7);
+    lcd_write_command(CMD_ENTRY_MODE_SET | EMODE_CURSOR | EMODE_SHIFT_RIGHT);
+    lcd_write_command(CMD_DISPLAY_CONTROL | DCTRL_DISPLAY_ON | DCTRL_CURSOR_OFF | DCTRL_BLINK_ON);
 
     lcd_clear();
     return 0;
@@ -275,9 +284,9 @@ DWORD lcd_loadCGRAM(BYTE *fp, DWORD dwCnt)
 {
     DWORD i;
 
-    dwWriteCmd(CMD_CGRAM_ADDR_SET); /* Set CGRAM address counter to 0    */
+    lcd_write_command(CMD_CGRAM_ADDR_SET); /* Set CGRAM address counter to 0    */
     for (i = 0; i < dwCnt; i++, fp++) {
-        dwWriteData(*fp);
+        lcd_write_data(*fp);
     }
     return 0;
 }
@@ -297,7 +306,7 @@ DWORD lcd_putc(BYTE byChar)
         lcd_goToXY(1, 2);
     }
 
-    dwWriteData(byChar);
+    lcd_write_data(byChar);
     lcdPtr++;
 
     return 0;
@@ -411,13 +420,15 @@ static DWORD dwReadStat(void)
  ** Return      : None
  **
  ******************************************************************************/
-static DWORD dwWaitBusy(void)
+static u32
+lcd_wait_busy(void)
 {
-    DWORD dwStat;
+    u32 status;
 
     do {
-        dwStat = dwReadStat();
-    } while (dwStat & BUSY_FLAG); /* Wait for busy flag */
+        status = dwReadStat();
+    } while (status & BUSY_FLAG); /* Wait for busy flag */
+    
     return 0;
 }
 
@@ -430,14 +441,14 @@ static DWORD dwWaitBusy(void)
  ** Return      : None
  **
  ******************************************************************************/
-static DWORD dwWriteByte(BYTE byChar)
+static void
+lcd_write_byte(uint8_t data)
 {
     CommomNibbles_t * Nibble;
 
-    Nibble = (CommomNibbles_t *) & byChar;
+    Nibble = (CommomNibbles_t *) & data;
     dwWriteByteNibble(Nibble->byteH);
     dwWriteByteNibble(Nibble->byteL);
-    return 0;
 }
 
 /******************************************************************************
@@ -461,42 +472,28 @@ static DWORD dwWriteByteNibble(BYTE byNibble)
     return;
 }
 
-/******************************************************************************
- ** Function    : dwWriteCmd
- **
- ** Descriptions: Write command to LCD controller.
- **
- ** Parameters  : Command byte
- ** Return      : None
- **
- ******************************************************************************/
-static DWORD dwWriteCmd(BYTE byCmd)
+/******************************************************************************/
+
+static void
+lcd_write_command(uint8_t command)
 {
-    dwWaitBusy();
+    lcd_wait_busy();
+
     FIO1CLR = LCD_RS;
-    dwWriteByte(byCmd);
-    return;
+    
+    lcd_write_byte(command);
 }
 
-/******************************************************************************
- ** Function    : dwWriteData
- **
- ** Descriptions: Write data to LCD controller.
- **
- ** parameters  : Data byte
- ** Return      : None
- **
- ******************************************************************************/
-static DWORD dwWriteData(BYTE byData)
+/******************************************************************************/
+
+static void
+lcd_write_data(uint8_t data)
 {
-    dwWaitBusy();
+    lcd_wait_busy();
+
     FIO1SET = LCD_RS;
-    dwWriteByte(byData);
-    return 0;
+    
+    lcd_write_byte(data);
 }
 
-/******************************************************************************
- **
- ** END OF FILE
- **
- ******************************************************************************/
+/******************************************************************************/

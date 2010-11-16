@@ -68,8 +68,6 @@
  <Watch4>
   <Watches active="0" />
  </Watch4>
- <Files>
-  <SessionOpenFile useTextEdit="1" useBinaryEdit="0" x="31" debugPath="\\VBOXSVR\git\ifsc\tcc\embedded\client\client.c" y="35" useHTMLEdit="0" path="\\VBOXSVR\git\ifsc\tcc\embedded\client\client.c" left="0" selected="1" name="unnamed" top="26" />
- </Files>
+ <Files/>
  <ARMCrossStudioWindow activeProject="embedded" autoConnectTarget="" debugSearchFileMap="" fileDialogInitialDirectory="\\VBOXSVR\ifsc\tcc\embedded\rtos" fileDialogDefaultFilter="*.cpp;*.cxx;*.cc;*.c;*.h" autoConnectCapabilities="0" debugSearchPath="" buildConfiguration="ARM Flash Release" />
 </session>
