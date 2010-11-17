@@ -1,34 +1,4 @@
-/******************************************************************************
- **
- ** Filename    : lcd.c
- ** Abstract    :
- ** Settings    :
- ** Contents    :
- **     Public:
- **     Private:
- ** Author      : bruno
- ** Http        :
- ** Mail        :
- ** Create on   : 25 de Outubro de 2009, 11:42
- **
- ******************************************************************************/
-/******************************************************************************
- **
- ** 1   INCLUDE FILES
- ** 1.1 Standart include files
- **
- ******************************************************************************/
-#include <targets/LPC2368.h>
-
-/******************************************************************************
- ** 1.2 Application include files
- ******************************************************************************/
-#include "commom.h"
-#include "FreeRTOS.h"
-#include "lcd.h"
-#include "queue.h"
-#include "task.h"
-#include "webserver/uip-conf.h"
+#include "wrapper.h"
 
 /******************************************************************************
  **
@@ -137,8 +107,21 @@ static lcd_setup_t xMessage;
  ******************************************************************************/
 static DWORD dwReadStat(void);
 static uint32_t lcd_wait_busy(void);
-static void lcd_write_byte(uint8_t data);
-static DWORD dwWriteByteNibble(BYTE byNibble);
+
+/**
+ * 
+ * @param data
+ */
+static void
+lcd_write_byte(uint8_t data);
+
+/**
+ * 
+ * @desc Write a 4-bit command to LCD controller.
+ * @param nibble
+ */
+static void
+lcd_write_nibble(uint8_t nibble);
 
 /**
  * 
@@ -258,10 +241,10 @@ DWORD lcd_init(void)
     FIO1CLR = LCD_RW | LCD_RS | LCD_DATA;
 
     vTaskDelay(COMMOM_DELAY_15MS);
-    dwWriteByteNibble(0x3); /* Select 4-bit interface            */
-    dwWriteByteNibble(0x3);
-    dwWriteByteNibble(0x3);
-    dwWriteByteNibble(0x2);
+    lcd_write_nibble(0x3); /* Select 4-bit interface            */
+    lcd_write_nibble(0x3);
+    lcd_write_nibble(0x3);
+    lcd_write_nibble(0x2);
 
     lcd_write_command(CMD_FUNCTION_SET | FSET_4BITS | FSET_TWO_LINES | FSET_MATRIX_5_7);
     lcd_write_command(CMD_ENTRY_MODE_SET | EMODE_CURSOR | EMODE_SHIFT_RIGHT);
@@ -357,7 +340,8 @@ DWORD lcd_dwSendToQueue(BYTE * sLcdMessage, WORD wLine, WORD wColumn)
  ** Return      : None
  **
  ******************************************************************************/
-void lcd_vTask(void *pvParameters)
+void
+lcd_task(void *user_data)
 {
     lcd_setup_t LCDSetup;
 
@@ -428,7 +412,7 @@ lcd_wait_busy(void)
     do {
         status = dwReadStat();
     } while (status & BUSY_FLAG); /* Wait for busy flag */
-    
+
     return 0;
 }
 
@@ -444,32 +428,11 @@ lcd_wait_busy(void)
 static void
 lcd_write_byte(uint8_t data)
 {
-    CommomNibbles_t * Nibble;
+    CommomNibbles_t * nibble;
 
-    Nibble = (CommomNibbles_t *) & data;
-    dwWriteByteNibble(Nibble->byteH);
-    dwWriteByteNibble(Nibble->byteL);
-}
-
-/******************************************************************************
- ** Function    :  dwWriteByteNibble
- **
- ** Descriptions: Write a 4-bit command to LCD controller.
- **
- ** Parameters  : Four bits to write
- ** Return      : None
- **
- ******************************************************************************/
-static DWORD dwWriteByteNibble(BYTE byNibble)
-{
-    FIO1DIR |= LCD_DATA | LCD_CTRL;
-    FIO1CLR = LCD_RW | LCD_DATA;
-    FIO1SET = (byNibble & 0xF) << 24;
-    FIO1SET = LCD_E;
-    vTaskDelay(COMMOM_DELAY_1MS);
-    FIO1CLR = LCD_E;
-    vTaskDelay(COMMOM_DELAY_1MS);
-    return;
+    nibble = (CommomNibbles_t *) & data;
+    lcd_write_nibble(nibble->byteH);
+    lcd_write_nibble(nibble->byteL);
 }
 
 /******************************************************************************/
@@ -480,7 +443,7 @@ lcd_write_command(uint8_t command)
     lcd_wait_busy();
 
     FIO1CLR = LCD_RS;
-    
+
     lcd_write_byte(command);
 }
 
@@ -492,8 +455,23 @@ lcd_write_data(uint8_t data)
     lcd_wait_busy();
 
     FIO1SET = LCD_RS;
-    
+
     lcd_write_byte(data);
 }
 
 /******************************************************************************/
+
+static void
+lcd_write_nibble(uint8_t nibble)
+{
+    FIO1DIR |= LCD_DATA | LCD_CTRL;
+    FIO1CLR = LCD_RW | LCD_DATA;
+    FIO1SET = (nibble & 0xF) << 24;
+    FIO1SET = LCD_E;
+    vTaskDelay(COMMOM_DELAY_1MS);
+    FIO1CLR = LCD_E;
+    vTaskDelay(COMMOM_DELAY_1MS);
+}
+
+/******************************************************************************/
+

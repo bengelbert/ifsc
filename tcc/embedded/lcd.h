@@ -1,6 +1,6 @@
 /******************************************************************************
  **
- ** Filename    : poll.c
+ ** Filename    : lcd.h
  ** Abstract    :
  ** Settings    :
  ** Contents    :
@@ -9,9 +9,15 @@
  ** Author      : bruno
  ** Http        :
  ** Mail        :
- ** Create on   : 25 de Outubro de 2009, 11:41
+ ** Create on   : 25 de Outubro de 2009, 13:02
  **
  ******************************************************************************/
+#ifndef _LCD_H_
+#define _LCD_H_
+
+#ifdef	__cplusplus
+extern "C" {
+#endif
 /******************************************************************************
  **
  ** 1   INCLUDE FILES
@@ -21,52 +27,63 @@
 /******************************************************************************
  ** 1.2 Application include files
  ******************************************************************************/
+#include "commom.h"
+#include "queue.h"
 
 /******************************************************************************
  **
  ** 2   DECLARATIONS
- ** 2.1 Internal constants
+ ** 2.1 Global constants
  **
  ******************************************************************************/
-/******************************************************************************
- ** 2.2 Internal type definitions
- ******************************************************************************/
-/******************************************************************************
- ** 2.3 Internal macros
- ******************************************************************************/
-/******************************************************************************
- ** 2.4 Internal variables
- ******************************************************************************/
-/******************************************************************************
- ** 2.5 Global variables (declared as 'extern' in some header files)
- ******************************************************************************/
-/******************************************************************************
- ** 2.6 Private function prototypes (defined in Section 5)
- ******************************************************************************/
+#define LCD_FIRST_COLUMN  (1)
+#define LCD_SECOND_COLUMN (2)
+
+#define LCD_FIRST_LINE  (1)
+#define LCD_SECOND_LINE (2)
+
+#define LCD_QUEUE_SIZE  (3)
 
 /******************************************************************************
- **
- ** 3 PUBLIC FUNCTIONS (declared in Section 2.5 on poll.h)
- **
+ ** 2.2 Global type definitions
  ******************************************************************************/
-/******************************************************************************
- ** Function    :
- **
- ** Descriptions:
- **
- ** Parameters  :
- ** Return      : 
- **
- ******************************************************************************/
+typedef struct {
+  BYTE byColumn;
+  BYTE byRow;
+  BYTE * Message;
+} lcd_setup_t;
 
 /******************************************************************************
- **
- ** 4 PRIVATE FUNCTIONS (declared on Section 2.6)
- **
+ ** 2.3 Global macros
  ******************************************************************************/
+/******************************************************************************
+ ** 2.4 Global variables
+ ******************************************************************************/
+/**
+ ** The queue used to send messages to the LCD task.
+ **/
+extern xQueueHandle lcd_xQueue;
+
+/******************************************************************************
+ ** 2.5 Public function prototypes
+ ******************************************************************************/
+extern DWORD lcd_barGraph(DWORD dwValue, DWORD dwSize);
+extern DWORD lcd_clear(void);
+extern DWORD lcd_cursorOff(void);
+extern DWORD lcd_goToXY(BYTE byColumn, BYTE byRow);
+extern DWORD lcd_init(void);
+extern DWORD lcd_loadCGRAM(BYTE *fp, DWORD dwCnt);
+extern DWORD lcd_putc(BYTE byChar);
+extern DWORD lcd_puts(BYTE * Message);
+extern DWORD lcd_dwSendToQueue(BYTE * sLcdMessage, WORD wLine, WORD wColumn);
+extern void lcd_task (void *pvParameters);
 
 /******************************************************************************
  **
  ** END OF FILE
  **
  ******************************************************************************/
+#ifdef	__cplusplus
+}
+#endif
+#endif /* _LCD_H_ */
