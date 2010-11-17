@@ -56,7 +56,7 @@
 #include "client.h"
 #include "clock-arch.h"
 #include "emac.h"
-#include "lcd.h"
+#include "lcd16x2.h"
 #include "uip.h"
 #include "uip_arp.h"
 #include "timer.h"
