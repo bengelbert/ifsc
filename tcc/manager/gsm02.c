@@ -37,6 +37,7 @@ typedef struct gsm02_s gsm02_t;
 typedef struct gsm02_tags_s gsm02_tags_t;
 
 struct gsm02_s {
+    GAsyncQueue *queue;
     service_t *service;
     gsm02_tags_t *tags;
     GMainLoop *loop;
@@ -45,6 +46,7 @@ struct gsm02_s {
 /******************************************************************************/
 
 struct gsm02_tags_s {
+    guint pop_queue;
     guint send_ping;
 };
 
@@ -110,6 +112,24 @@ gsm02_send_neighbours_list(gsm02_t *self);
  */
 static void
 gsm02_send_startup_channel(gsm02_t *self);
+
+/******************************************************************************/
+/*
+ * Private variables
+ */
+static GAsyncQueue *gsm02_queue = NULL;
+
+/******************************************************************************/
+/*
+ * Function definitions
+ */
+void
+gsm02_async_queue_init(void)
+{
+    gsm02_queue = g_async_queue_new();
+
+    g_assert(gsm02_queue);
+}
 
 /******************************************************************************/
 

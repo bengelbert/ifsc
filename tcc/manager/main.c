@@ -59,6 +59,8 @@ app_init_cmdline(gint * argc, gchar *** argv)
 static void
 app_start_server(void)
 {
+    gsm02_async_queue_init();
+
     service_socket_add(50050, G_CALLBACK(gsm02_connect_handler), NULL);
     service_socket_add(50051, G_CALLBACK(script_connect_handler), NULL);
 }
@@ -76,6 +78,7 @@ int main(int argc, char * argv[])
 
     log_set_level("GSM02", app.cmdline.verbose);
     log_set_level("SCRIPT", app.cmdline.verbose);
+    log_set_level("SERVICE", app.cmdline.verbose);
 
     app_start_server();
 

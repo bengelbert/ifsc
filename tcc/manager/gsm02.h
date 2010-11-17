@@ -8,6 +8,20 @@
 extern "C" {
 #endif
 
+/**
+ *
+ */
+void
+gsm02_async_queue_init(void);
+
+/**
+ *
+ * @param service
+ * @param connection
+ * @param listener
+ * @param user_data
+ * @return
+ */
 gboolean
 gsm02_connect_handler(GThreadedSocketService * service,
         GSocketConnection * connection,
