@@ -8,9 +8,12 @@
 extern "C" {
 #endif
 
+gboolean
+script_connect_handler(GThreadedSocketService * service,
+        GSocketConnection * connection,
+        GSocketListener * listener,
+        gpointer user_data);
 
-#include "wrapper.h"
-    
 
 #ifdef	__cplusplus
 }

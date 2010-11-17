@@ -15,6 +15,13 @@ def check_size_id(idboard):
       print '************************************************************************'
       sys.exit();
 
+def check_size_dtmf(dtmf):
+   if(len(dtmf) != 2):
+      print '**************************** ERRO **************************************'
+      print "*** Erro: O LAC deve possuir 2 digitos hexadecimais apenas***"
+      print '************************************************************************'
+      sys.exit();
+
 def check_val_of_band(banda):
    for k in range(len(banda)):
       if(banda[k] != '800' and banda[k] != '850' and 
@@ -65,6 +72,10 @@ def supp_on_dbfj(iddbf):
 
 def supp_off_dbfj(iddbfj):
    data_hex = binascii.a2b_hex("001200026BFBE99F404BE99F40A31F" + iddbfj + '00')
+   s.send(data_hex)
+
+def supp_send_dtmf(dtmf):
+   data_hex = binascii.a2b_hex("001000020000000001000000010000" + dtmf)
    s.send(data_hex)
 
 def supp_add_imei():
@@ -249,7 +260,7 @@ if len(sys.argv) == 1:
 	 sys.exit();
 
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "", ["help","tipo=","id=","ondbfc=", "offdbfc=", "resetdbfc=", "ondbfj=", "offdbfj=", "resetdbfj=", "dbfjconfig=", "dbfjbandas=", "dbfjstatus=", "dbfjpots=", "listallcarceris", "ipmanager=", "portmanager=", "addimei", "remimei", "atualizalistimei"])
+	opts, args = getopt.getopt(sys.argv[1:], "", ["help","dtmf=","tipo=","id=","ondbfc=", "offdbfc=", "resetdbfc=", "ondbfj=", "offdbfj=", "resetdbfj=", "dbfjconfig=", "dbfjbandas=", "dbfjstatus=", "dbfjpots=", "listallcarceris", "ipmanager=", "portmanager=", "addimei", "remimei", "atualizalistimei"])
 
 except getopt.GetoptError, err:
 	# print help information and exit:
@@ -278,8 +289,15 @@ addimsi = '0'
 remimei = '0'
 remimsi = '0'
 atualizalistimei = '0'
+dtmf='0'
+enviar_dtmf='0'
 
 for o, a in opts:
+	if o == "--dtmf":
+	   dtmf = a
+	   check_size_dtmf(dtmf)
+   	   enviar_dtmf = '1'
+
 	if o == "--ondbfc":
 	   iddbfc = a
 	   check_size_id(iddbfc)
@@ -350,8 +368,8 @@ for o, a in opts:
 	elif o in ("--help"):
 	   usage()
 	   sys.exit()
-	else:
-	   assert False, "Opcao invalida!"
+#else:
+#	   assert False, "Opcao invalida!"
 
 if(ipmanager == '0' or portmanager == '0'):
    print '**************************** ERRO **************************************'
@@ -361,6 +379,9 @@ if(ipmanager == '0' or portmanager == '0'):
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((ipmanager, int(portmanager)))
+
+if(enviar_dtmf == '1'):
+   supp_send_dtmf(dtmf)
 
 if(addimei == '1'):
    supp_add_imei()
