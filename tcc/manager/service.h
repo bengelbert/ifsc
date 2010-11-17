@@ -66,6 +66,18 @@ service_message_append_16(GByteArray *message,
         guint data);
 
 /**
+ * 
+ * @param message
+ * @param data
+ * @param max
+ * @return
+ */
+GByteArray *
+service_message_append_string(GByteArray *message,
+        gchar *data,
+        gsize max);
+
+/**
  *
  * @param message
  * @param data

@@ -140,6 +140,26 @@ service_message_append_16(GByteArray *message,
 /******************************************************************************/
 
 GByteArray *
+service_message_append_string(GByteArray *message,
+        gchar *data,
+        gsize max)
+{
+    gsize len = 0;
+    gchar aux[SERVICE_BUFFER_LEN] = {};
+
+    g_assert(data);
+    g_assert(message);
+
+    len = g_snprintf(aux, max, "%s", data);
+
+    message = g_byte_array_append(message, (guint8 *) & aux, len + 1);
+
+    return message;
+}
+
+/******************************************************************************/
+
+GByteArray *
 service_message_append_string_sized(GByteArray *message,
         gchar *data,
         gsize len)

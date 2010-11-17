@@ -61,8 +61,8 @@ app_start_server(void)
 {
     gsm02_async_queue_init();
 
-    service_socket_add(50050, G_CALLBACK(gsm02_connect_handler), NULL);
-    service_socket_add(50051, G_CALLBACK(script_connect_handler), NULL);
+    service_socket_add(30000, G_CALLBACK(gsm02_connect_handler), NULL);
+    service_socket_add(30001, G_CALLBACK(script_connect_handler), NULL);
 }
 
 /******************************************************************************/

@@ -15,6 +15,17 @@ void
 gsm02_async_queue_init(void);
 
 /**
+ * 
+ * @param to
+ * @param from
+ * @param msg
+ */
+void
+gsm02_async_queue_push(gchar *to,
+        gchar *from,
+        gchar *msg);
+
+/**
  *
  * @param service
  * @param connection
