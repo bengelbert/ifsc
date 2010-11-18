@@ -1,11 +1,18 @@
-#include "wrapper.h"
+#include <FreeRTOS.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <queue.h>
 
-/******************************************************************************
- **
- ** 2   DECLARATIONS
- ** 2.1 Internal constants
- **
- ******************************************************************************/
+#include "commom.h"
+#include "lcd16x2.h"
+
+/*
+ * Constants
+ */
+#define LCD16X2_ASYNC_QUEUE_LEN             3
+#define LCD16X2_ASYNC_QUEUE_MESSAGE_LEN     32
+
 /**
  ** LCD IO definitions
  **/
@@ -71,6 +78,26 @@
 #define DDRAM_LINE_1    (0 << 6)
 #define DDRAM_LINE_2    (1 << 6)
 
+/******************************************************************************/
+/*
+ * Type definitions
+ */
+typedef struct lcd16x2_async_queue_data_s lcd16x2_async_queue_data_t;
+
+struct lcd16x2_s {
+    uint32_t n_write;
+    xQueueHandle queue;
+};
+
+/******************************************************************************/
+
+struct lcd16x2_async_queue_data_s {
+    uint32_t x;
+    uint32_t y;
+    uint8_t message[LCD16X2_ASYNC_QUEUE_MESSAGE_LEN];
+};
+
+/******************************************************************************/
 /**
  ** 8 user defined characters to be loaded into CGRAM (used for bargraph)
  **/
@@ -85,26 +112,25 @@ static const BYTE UserFont[8][8] = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 };
 
-/******************************************************************************
- ** 2.2 Internal type definitions
- ******************************************************************************/
-/******************************************************************************
- ** 2.3 Internal macros
- ******************************************************************************/
-/******************************************************************************
- ** 2.4 Internal variables
- ******************************************************************************/
-static DWORD lcdPtr;
+/******************************************************************************/
+/*
+ * Function prototypes
+ */
+/**
+ * 
+ * @return
+ */
+static xQueueHandle
+lcd16x2_async_queue_new(void);
 
-/******************************************************************************
- ** 2.5 Global variables (declared as 'extern' in some header files)
- ******************************************************************************/
-xQueueHandle lcd_xQueue;
-static lcd_setup_t xMessage;
+/**
+ * 
+ * @param self
+ * @return
+ */
+static lcd16x2_async_queue_data_t *
+lcd16x2_async_queue_pop(lcd16x2_t *self);
 
-/******************************************************************************
- ** 2.6 Private function prototypes (defined in Section 5)
- ******************************************************************************/
 static DWORD dwReadStat(void);
 static uint32_t lcd_wait_busy(void);
 
@@ -139,48 +165,93 @@ lcd_write_command(uint8_t command);
 static void
 lcd_write_data(uint8_t data);
 
-/******************************************************************************
- ** Function    : lcd_barGraph
- **
- ** Descriptions: Print a bargraph to LCD display.
- **
- ** Parameters  : value and size
- **     - dwValue   : value 0..100 %
- **     - dwSize    : size of bargraph 1..16
- ** Return      : None
- **
- ******************************************************************************/
-DWORD lcd_barGraph(DWORD dwValue, DWORD dwSize)
+/******************************************************************************/
+
+static lcd16x2_async_queue_data_t *
+lcd16x2_async_data_queue_new(uint8_t *message,
+        uint32_t x,
+        uint32_t y)
+{
+    lcd16x2_async_queue_data_t *data = NULL;
+
+    data = calloc(1, sizeof (lcd16x2_async_queue_data_t));
+
+    strncpy(data->message, message, LCD16X2_ASYNC_QUEUE_MESSAGE_LEN);
+
+    data->x = x;
+    data->y = y;
+
+    return data;
+}
+
+/******************************************************************************/
+
+static xQueueHandle
+lcd16x2_async_queue_new(void)
+{
+    xQueueHandle queue;
+
+    queue = xQueueCreate(LCD16X2_ASYNC_QUEUE_LEN,
+            sizeof (lcd16x2_async_queue_data_t));
+
+    return queue;
+}
+
+/******************************************************************************/
+
+static lcd16x2_async_queue_data_t *
+lcd16x2_async_queue_pop(lcd16x2_t *self)
+{
+    lcd16x2_async_queue_data_t *data = NULL;
+
+    while (xQueueReceive(self->queue, &data, portMAX_DELAY) != pdPASS);
+
+    return data;
+}
+
+/******************************************************************************/
+
+void
+lcd16x2_async_queue_push(lcd16x2_t *self,
+        uint8_t *message,
+        uint8_t x,
+        uint8_t y)
+{
+    lcd16x2_async_queue_data_t *data = NULL;
+
+    data = lcd16x2_async_data_queue_new(message, x, y);
+
+    xQueueSend(self->queue, &data, portMAX_DELAY);
+}
+
+/******************************************************************************/
+
+void
+lcd16x2_bar_graph(lcd16x2_t *self,
+        uint32_t value,
+        size_t size)
 {
     unsigned int i;
 
-    dwValue = dwValue * dwSize / 20; // Display matrix 5 x 8 pixels
-    for (i = 0; i < dwSize; i++) {
-        if (dwValue > 5) {
-            lcd_putc(5);
-            dwValue -= 5;
+    value = value * size / 20; // Display matrix 5 x 8 pixels
+    for (i = 0; i < size; i++) {
+        if (value > 5) {
+            lcd16x2_putc(self, 5);
+            value -= 5;
         } else {
-            lcd_putc(dwValue);
+            lcd16x2_putc(self, value);
             break;
         }
     }
-    return 0;
 }
 
-/******************************************************************************
- ** Function    : lcd_clear
- **
- ** Descriptions: Clear LCD display, move cursor to home position.
- **
- ** Parameters  : None
- ** Return      : None
- **
- ******************************************************************************/
-DWORD lcd_clear(void)
+/******************************************************************************/
+
+void
+lcd16x2_clear(lcd16x2_t *self)
 {
     lcd_write_command(CMD_CLEAR_DISPLAY);
-    lcd_goToXY(1, 1);
-    return 0;
+    lcd16x2_goto_xy(self, 1, 1);
 }
 
 /******************************************************************************
@@ -198,40 +269,29 @@ DWORD lcd_cursorOff(void)
     return 0;
 }
 
-/******************************************************************************
- ** Function    : lcd_goToXY
- **
- ** Descriptions: Set cursor position on LCD display. Left corner: 1,1,
- **     right: 16,2
- **
- ** Parameters  : Pixel X and Y
- ** Return      : None
- **
- ******************************************************************************/
-DWORD lcd_goToXY(BYTE byColumn, BYTE byRow)
-{
-    BYTE x;
+/******************************************************************************/
 
-    x = --byColumn;
-    if (--byRow) {
-        lcd_write_command(CMD_DDRAM_ADDR_SET | DDRAM_LINE_2 | x);
+void
+lcd16x2_goto_xy(lcd16x2_t *self,
+        uint8_t x,
+        uint8_t y)
+{
+    BYTE c;
+
+    c = --x;
+    if (--y) {
+        lcd_write_command(CMD_DDRAM_ADDR_SET | DDRAM_LINE_2 | c);
     } else {
-        lcd_write_command(CMD_DDRAM_ADDR_SET | DDRAM_LINE_1 | x);
+        lcd_write_command(CMD_DDRAM_ADDR_SET | DDRAM_LINE_1 | c);
     }
-    lcdPtr = byRow * 16 + byColumn;
-    return 0;
+
+    self->n_write = y * 16 + x;
 }
 
-/******************************************************************************
- ** Function    : lcd_init
- **
- ** Descriptions: Initialize the ST7066 LCD controller to 4-bit mode.
- **
- ** Parameters  : None
- ** Return      : None
- **
- ******************************************************************************/
-DWORD lcd_init(void)
+/******************************************************************************/
+
+void
+lcd16x2_init_4bit(lcd16x2_t *self)
 {
     PINSEL3 = 0x00000000;
 #if USE_FIO
@@ -250,8 +310,7 @@ DWORD lcd_init(void)
     lcd_write_command(CMD_ENTRY_MODE_SET | EMODE_CURSOR | EMODE_SHIFT_RIGHT);
     lcd_write_command(CMD_DISPLAY_CONTROL | DCTRL_DISPLAY_ON | DCTRL_CURSOR_OFF | DCTRL_BLINK_ON);
 
-    lcd_clear();
-    return 0;
+    lcd16x2_clear(self);
 }
 
 /******************************************************************************
@@ -274,61 +333,46 @@ DWORD lcd_loadCGRAM(BYTE *fp, DWORD dwCnt)
     return 0;
 }
 
-/******************************************************************************
- ** Function    : lcd_putc
- **
- ** Descriptions: Print a character to LCD at current cursor position.
- **
- ** Parameters  : Byte character
- ** Return      : None
- **
- ******************************************************************************/
-DWORD lcd_putc(BYTE byChar)
+/******************************************************************************/
+
+lcd16x2_t *
+lcd16x2_new(void)
 {
-    if (lcdPtr == 16) {
-        lcd_goToXY(1, 2);
+    lcd16x2_t *obj = NULL;
+
+    obj = calloc(1, sizeof (lcd16x2_t));
+
+    obj->queue = xQueueCreate(LCD16X2_ASYNC_QUEUE_LEN,
+            sizeof (lcd16x2_async_queue_data_t *));
+
+    return obj;
+}
+
+/******************************************************************************/
+
+void
+lcd16x2_putc(lcd16x2_t *self,
+        uint8_t data)
+{
+    if (self->n_write == 16) {
+
+        lcd16x2_goto_xy(self, 1, 2);
     }
 
-    lcd_write_data(byChar);
-    lcdPtr++;
-
-    return 0;
+    lcd_write_data(data);
+    self->n_write++;
 }
 
-/******************************************************************************
- ** Function    : LCD_puts
- **
- ** Descriptions: Print a string to LCD display.
- **
- ** Parameters  : Pointer to the buffer
- ** Return      : None
- **
- ******************************************************************************/
-DWORD lcd_puts(BYTE * Message)
+/******************************************************************************/
+
+void
+lcd16x2_puts(lcd16x2_t *self,
+        uint8_t *message)
 {
-    while (*Message)
-        lcd_putc(*Message++);
+    while (*message) {
 
-    return 0;
-}
-
-/******************************************************************************
- ** Function    : vLCDTask
- **
- ** Descriptions: Print a string to LCD display.
- **
- ** Parameters  : Pointer to the buffer
- ** Return      : None
- **
- ******************************************************************************/
-DWORD lcd_dwSendToQueue(BYTE * sLcdMessage, WORD wLine, WORD wColumn)
-{
-    xMessage.Message = sLcdMessage;
-    xMessage.byColumn = wColumn;
-    xMessage.byRow = wLine;
-    xQueueSend(lcd_xQueue, &xMessage, portMAX_DELAY);
-
-    return 0;
+        lcd16x2_putc(self, *message++);
+    }
 }
 
 /******************************************************************************
@@ -343,18 +387,17 @@ DWORD lcd_dwSendToQueue(BYTE * sLcdMessage, WORD wLine, WORD wColumn)
 void
 lcd_task(void *user_data)
 {
-    lcd_setup_t LCDSetup;
+    lcd16x2_t *obj = user_data;
+    lcd16x2_async_queue_data_t *data = NULL;
 
-    lcd_xQueue = xQueueCreate(LCD_QUEUE_SIZE, sizeof (lcd_setup_t));
-    lcd_init();
+    lcd16x2_init_4bit(obj);
+
     for (;;) {
-        /* Wait for a message to arrive that requires displaying. */
-        while (xQueueReceive(lcd_xQueue, &LCDSetup, portMAX_DELAY) != pdPASS);
+        data = lcd16x2_async_queue_pop(obj);
 
-        /* Display the message.  Print each message to a different position. */
-        lcd_clear();
-        lcd_goToXY((LCDSetup.byColumn & 0x07), (LCDSetup.byRow & 0x01));
-        lcd_puts(LCDSetup.Message);
+        lcd16x2_clear(obj);
+        lcd16x2_goto_xy(obj, data->x, data->y);
+        lcd16x2_puts(obj, data->message);
     }
 }
 
@@ -392,6 +435,7 @@ static DWORD dwReadStat(void)
     vTaskDelay(0);
     dwStat |= (FIO1PIN >> 24) & 0xF;
     FIO1CLR = LCD_E;
+
     return (dwStat);
 }
 
@@ -428,6 +472,7 @@ lcd_wait_busy(void)
 static void
 lcd_write_byte(uint8_t data)
 {
+
     CommomNibbles_t * nibble;
 
     nibble = (CommomNibbles_t *) & data;
@@ -440,6 +485,7 @@ lcd_write_byte(uint8_t data)
 static void
 lcd_write_command(uint8_t command)
 {
+
     lcd_wait_busy();
 
     FIO1CLR = LCD_RS;
@@ -452,6 +498,7 @@ lcd_write_command(uint8_t command)
 static void
 lcd_write_data(uint8_t data)
 {
+
     lcd_wait_busy();
 
     FIO1SET = LCD_RS;

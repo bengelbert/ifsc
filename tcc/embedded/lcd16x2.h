@@ -1,6 +1,6 @@
 /******************************************************************************
  **
- ** Filename    : lcd.h
+ ** Filename    : lcd16x2.h
  ** Abstract    :
  ** Settings    :
  ** Contents    :
@@ -12,70 +12,115 @@
  ** Create on   : 25 de Outubro de 2009, 13:02
  **
  ******************************************************************************/
-#ifndef _LCD_H_
-#define _LCD_H_
+#ifndef _LCD16X2_H_
+#define _LCD16X2_H_
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
-/******************************************************************************
- **
- ** 1   INCLUDE FILES
- ** 1.1 Standart include files
- **
- ******************************************************************************/
-/******************************************************************************
- ** 1.2 Application include files
- ******************************************************************************/
-#include "commom.h"
-#include "queue.h"
 
-/******************************************************************************
- **
- ** 2   DECLARATIONS
- ** 2.1 Global constants
- **
- ******************************************************************************/
+#include <stdint.h>
+
+#include "commom.h"
+
 #define LCD_FIRST_COLUMN  (1)
 #define LCD_SECOND_COLUMN (2)
 
 #define LCD_FIRST_LINE  (1)
 #define LCD_SECOND_LINE (2)
 
-#define LCD_QUEUE_SIZE  (3)
-
 /******************************************************************************
  ** 2.2 Global type definitions
  ******************************************************************************/
-typedef struct {
-  BYTE byColumn;
-  BYTE byRow;
-  BYTE * Message;
-} lcd_setup_t;
+typedef struct lcd16x2_s lcd16x2_t;
 
-/******************************************************************************
- ** 2.3 Global macros
- ******************************************************************************/
-/******************************************************************************
- ** 2.4 Global variables
- ******************************************************************************/
+/******************************************************************************/
+/*
+ * Function prototypes
+ */
+
 /**
- ** The queue used to send messages to the LCD task.
- **/
-extern xQueueHandle lcd_xQueue;
+ *
+ * @param self
+ * @param message
+ * @param x
+ * @param y
+ */
+void
+lcd16x2_async_queue_push(lcd16x2_t *self,
+        uint8_t *message,
+        uint8_t x,
+        uint8_t y);
 
-/******************************************************************************
- ** 2.5 Public function prototypes
- ******************************************************************************/
-extern DWORD lcd_barGraph(DWORD dwValue, DWORD dwSize);
-extern DWORD lcd_clear(void);
+/**
+ * 
+ * @param self
+ * @param value
+ * @param size
+ */
+void
+lcd16x2_bar_graph(lcd16x2_t *self,
+        uint32_t value,
+        size_t size);
+
+/**
+ *
+ * @desc Clear LCD display, move cursor to home position.
+ * @param self
+ */
+void
+lcd16x2_clear(lcd16x2_t *self);
+
 extern DWORD lcd_cursorOff(void);
-extern DWORD lcd_goToXY(BYTE byColumn, BYTE byRow);
-extern DWORD lcd_init(void);
+
+/**
+ * 
+ * @desc Set cursor position on LCD display. Left corner: 1,1, right: 16,2
+ * @param self
+ * @param x
+ * @param y
+ */
+void
+lcd16x2_goto_xy(lcd16x2_t *self,
+        uint8_t x,
+        uint8_t y);
+
+/**
+ * 
+ * @param self
+ */
+void
+lcd16x2_init_4bit(lcd16x2_t *self);
+
 extern DWORD lcd_loadCGRAM(BYTE *fp, DWORD dwCnt);
-extern DWORD lcd_putc(BYTE byChar);
-extern DWORD lcd_puts(BYTE * Message);
-extern DWORD lcd_dwSendToQueue(BYTE * sLcdMessage, WORD wLine, WORD wColumn);
+
+/**
+ * 
+ * @return 
+ */
+lcd16x2_t *
+lcd16x2_new(void);
+
+/**
+ *
+ * @desc Print a character to LCD at current cursor position.
+ * @param self
+ * @param data
+ */
+void
+lcd16x2_putc(lcd16x2_t *self,
+        uint8_t data);
+
+/**
+ *
+ * @desc Print a string to LCD display.
+ * @param self
+ * @param message
+ */
+void
+lcd16x2_puts(lcd16x2_t *self,
+        uint8_t *message);
+
 extern void lcd_task (void *pvParameters);
 
 /******************************************************************************
@@ -86,4 +131,4 @@ extern void lcd_task (void *pvParameters);
 #ifdef	__cplusplus
 }
 #endif
-#endif /* _LCD_H_ */
+#endif /* _LCD16X2_H_ */

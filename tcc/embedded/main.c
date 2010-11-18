@@ -53,9 +53,7 @@
 #include "queue.h"
 #include "semphr.h"
 #include "task.h"
-
-/* Demo app includes. */
-#include "lcd.h"
+#include "lcd16x2.h"
 
 /* Demo application definitions. */
 #define mainQUEUE_SIZE            (3)
@@ -90,13 +88,17 @@ extern void vuIP_Task(void *pvParameters);
 
 int main(void)
 {
+    lcd16x2_t *lcd = NULL;
+
+    lcd = lcd16x2_new();
+
     /* Setup the led's on the MCB2300 board */
     vParTestInitialise();
 
     /* Create the lwIP task.  This uses the lwIP RTOS abstraction layer.*/
-    xTaskCreate(vuIP_Task, (signed portCHAR *) "uIP", mainBASIC_WEB_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY - 1, NULL);
+    xTaskCreate(vuIP_Task, (signed portCHAR *) "uIP", mainBASIC_WEB_STACK_SIZE, lcd, mainCHECK_TASK_PRIORITY - 1, NULL);
     //xTaskCreate(mmc_vTask, (signed portCHAR *) "MMC", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY - 1, NULL);
-    xTaskCreate(lcd_vTask, (signed portCHAR *) "LCD", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY - 1, NULL);
+    xTaskCreate(lcd_task, (signed portCHAR *) "LCD", configMINIMAL_STACK_SIZE, lcd, mainCHECK_TASK_PRIORITY - 1, NULL);
 
     /* Start the scheduler. */
     vTaskStartScheduler();

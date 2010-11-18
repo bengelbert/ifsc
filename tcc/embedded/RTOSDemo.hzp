@@ -15,10 +15,11 @@
         <configuration build_exclude_from_build="No" Name="ARM Flash Debug" />
         <configuration asm_additional_options="" Name="Common" />
       </file>
-      <file file_name="client/client.c" Name="client.c" />
       <file file_name="partest/ParTest.c" Name="ParTest.c" />
-      <file file_name="lcd/lcd.c" Name="lcd.c" />
-      <file file_name="client/dgt.c" Name="dgt.c" />
+      <file file_name="dgt.c" Name="dgt.c" />
+      <file file_name="client.c" Name="client.c" />
+      <file file_name="lcd16x2.c" Name="lcd16x2.c" />
+      <file file_name="uip_task.c" Name="uip_task.c" />
     </folder>
     <folder Name="System Files" >
       <file file_name="$(StudioDir)/source/crt0.s" Name="crt0.s" />
@@ -45,10 +46,6 @@
     </folder>
     <configuration linker_scanf_fmt_level="int" linker_keep_symbols="_vectors" c_preprocessor_definitions="" gcc_optimization_level="Level 1" arm_target_flash_loader_type="LIBMEM RPC Loader" linker_additional_options="" linker_scanf_character_group_matching_enabled="No" linker_printf_fmt_level="int" Name="ARM Flash Debug" c_system_include_directories="$(StudioDir)/include;$(PackagesDir)/include" linker_output_format="hex" />
     <folder Name="uIP Source" >
-      <file file_name="webserver/uIP_Task.c" Name="uIP_Task.c" >
-        <configuration build_exclude_from_build="No" Name="ARM Flash Debug" />
-        <configuration gcc_optimization_level="Optimize For Size" Name="Common" />
-      </file>
       <file file_name="uip/uip_arp.c" Name="uip_arp.c" >
         <configuration build_exclude_from_build="No" Name="ARM Flash Debug" />
       </file>

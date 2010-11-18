@@ -44,7 +44,7 @@ extern "C" {
 /******************************************************************************
  ** 2.2 Global type definitions
  ******************************************************************************/
-typedef struct client_state_s   uip_tcp_appstate_t, client_state_t;
+typedef struct client_state_s uip_tcp_appstate_t, client_state_t;
 
 struct client_state_s {
     uint8_t connected;
@@ -61,9 +61,9 @@ struct client_state_s {
 /******************************************************************************
  ** 2.5 Public function prototypes
  ******************************************************************************/
-void client_appcall (void);
-void client_connect (void);
-void client_init    (void);
+void client_appcall(void);
+void client_connect(void);
+void client_init(void *lcd);
 
 #ifndef UIP_APPCALL
 #define UIP_APPCALL client_appcall

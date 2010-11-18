@@ -127,6 +127,7 @@ clock_time_t clock_time(void)
 void vuIP_Task(void *pvParameters)
 {
     portBASE_TYPE i;
+    lcd16x2_t *lcd = pvParameters;
     struct timer periodic_timer, arp_timer;
     extern void (vEMAC_ISR_Wrapper) (void);
 
@@ -137,7 +138,7 @@ void vuIP_Task(void *pvParameters)
     timer_set(&periodic_timer, configTICK_RATE_HZ / 2);
     timer_set(&arp_timer, configTICK_RATE_HZ * 10);
     uip_init();
-    client_init();
+    client_init(lcd);
 
     /* Initialise the MAC. */
     while (Init_EMAC() != pdPASS) {

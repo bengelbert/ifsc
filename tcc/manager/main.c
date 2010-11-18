@@ -61,8 +61,9 @@ app_start_server(void)
 {
     gsm02_async_queue_init();
 
-    service_socket_add(30000, G_CALLBACK(gsm02_connect_handler), NULL);
-    service_socket_add(30001, G_CALLBACK(script_connect_handler), NULL);
+    service_socket_add(30000, G_CALLBACK(mcu_connect_handler), NULL);
+    service_socket_add(30001, G_CALLBACK(gsm02_connect_handler), NULL);
+    service_socket_add(30002, G_CALLBACK(script_connect_handler), NULL);
 }
 
 /******************************************************************************/
@@ -76,6 +77,7 @@ int main(int argc, char * argv[])
 
     app_init_cmdline(&argc, &argv);
 
+    log_set_level("MCU", app.cmdline.verbose);
     log_set_level("GSM02", app.cmdline.verbose);
     log_set_level("SCRIPT", app.cmdline.verbose);
     log_set_level("SERVICE", app.cmdline.verbose);

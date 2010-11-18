@@ -27,7 +27,7 @@
 #include "client.h"
 #include "dgt.h"
 #include "FreeRTOS.h"
-#include "lcd.h"
+#include "lcd16x2.h"
 #include "psock.h"
 #include "pt.h"
 #include "queue.h"
@@ -61,11 +61,11 @@ typedef struct {
  ** 2.4 Internal variables
  ******************************************************************************/
 client_state_t s;
-static lcd_setup_t xMessage;
-extern xQueueHandle lcd_xQueue;
 uip_ipaddr_t IPAddr;
 uip_ipaddr_t IPServAddr;
 static BYTE sLcdMessage[32];
+
+static lcd16x2_t *lcd = NULL;
 
 /******************************************************************************
  ** 2.5 Global variables (declared as 'extern' in some header files)
@@ -74,7 +74,6 @@ static BYTE sLcdMessage[32];
  ** 2.6 Private function prototypes (defined in Section 5)
  ******************************************************************************/
 void newData(void);
-static void dwLcdWrite(void);
 
 /******************************************************************************
  **
@@ -98,7 +97,7 @@ client_appcall(void)
     static BYTE sLcdMessage[] = "Opaaaa";
 
     if (uip_connected()) {
-        lcd_dwSendToQueue(sLcdMessage, LCD_FIRST_LINE, LCD_FIRST_COLUMN);
+        //(sLcdMessage, LCD_FIRST_LINE, LCD_FIRST_COLUMN);
         //dgt_dwSendRequestInitFile();
     }
     if (uip_closed()) {
@@ -113,14 +112,14 @@ client_appcall(void)
     }
     if (uip_newdata()) {
         //if (uip_datalen() > 0)
-            //dgt_dwHandleMessage((BYTE *) uip_appdata);
+        //dgt_dwHandleMessage((BYTE *) uip_appdata);
     }
 
     if (uip_rexmit() || uip_acked() || uip_poll()) {
-       // if (dgt_wGetInitConfigFlag() == 1) {
-         //   vTaskDelay(dgt_wGetPollingTime() * 1000 / portTICK_RATE_MS);
-           // dgt_dwSendPolling();
-       // }
+        // if (dgt_wGetInitConfigFlag() == 1) {
+        //   vTaskDelay(dgt_wGetPollingTime() * 1000 / portTICK_RATE_MS);
+        // dgt_dwSendPolling();
+        // }
     }
 }
 
@@ -133,14 +132,17 @@ client_appcall(void)
  ** Return      :
  **
  ******************************************************************************/
-void client_init(void)
+void
+client_init(void *user_data)
 {
+    lcd = user_data;
+
     uip_ipaddr(IPAddr, uipIP_ADDR0, uipIP_ADDR1, uipIP_ADDR2, uipIP_ADDR3);
     uip_sethostaddr(IPAddr);
     uip_ipaddr(IPServAddr, 192, 168, 0, 1);
-    strcpy(sLcdMessage, "Try to connect..IP: 192.168.0.1");
-    lcd_dwSendToQueue(sLcdMessage, LCD_FIRST_LINE, LCD_FIRST_COLUMN);
-    //dwLcdWrite();
+
+    lcd16x2_async_queue_push(lcd, "Try to connect..IP: 192.168.0.1", 1, 1);
+
     client_connect();
 }
 
@@ -163,28 +165,3 @@ void newData(void)
 {
 
 }
-
-/******************************************************************************
- ** Function    : dwLcdWrite
- **
- ** Descriptions:
- **
- ** Parameters  :
- ** Return      :
- **
- ******************************************************************************/
-static void dwLcdWrite(void)
-{
-    xMessage.Message = sLcdMessage;
-    xMessage.byColumn = LCD_FIRST_COLUMN;
-    xMessage.byRow = LCD_FIRST_LINE;
-    xQueueSend(lcd_xQueue, &xMessage, portMAX_DELAY);
-
-    vTaskDelay(2000 / portTICK_RATE_MS);
-}
-
-/******************************************************************************
- **
- ** END OF FILE
- **
- ******************************************************************************/

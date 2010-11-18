@@ -81,7 +81,7 @@
 #ifndef __PSOCK_H__
 #define __PSOCK_H__
 
-#include "uipopt.h"
+#include <uipopt.h>
 #include "pt.h"
 
  /*

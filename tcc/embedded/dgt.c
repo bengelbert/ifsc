@@ -32,7 +32,7 @@
  ******************************************************************************/
 #include "commom.h"
 #include "FreeRTOS.h"
-#include "lcd.h"
+#include "lcd16x2.h"
 #include "uip.h"
 #include "task.h"
 
@@ -109,7 +109,6 @@ typedef struct {
  * 2.4 Internal variables
  ******************************************************************************/
 static BYTE sLcdMessage[32];
-static lcd_setup_t xMessage;
 
 static Flags_t Flags = {
     .wPollingIsSet = 0,
@@ -121,13 +120,11 @@ static InitFile_t InitConfig;
 /******************************************************************************
  * 2.5 Global variables (declared as 'extern' in some header files)
  ******************************************************************************/
-extern xQueueHandle lcd_xQueue;
 
 /******************************************************************************
  * 2.6 Private function prototypes (defined in Section 5)
  ******************************************************************************/
 static WORD wMountHeader(BYTE byCmd, BYTE * Packet, WORD wPayloadLen);
-static DWORD dwLcdWrite(void);
 static DWORD dwReceivedInitFile(BYTE * Message);
 
 /******************************************************************************
@@ -294,28 +291,6 @@ static WORD wMountHeader(BYTE byCmd, BYTE * Packet, WORD wPayloadLen)
     *Message.w++ = HTONS(wPayloadLen);
     *Message.w++ = HTONS(CMD_VERSION);
     *Message.b++ = byCmd;
-
-    return 0;
-}
-
-/******************************************************************************
- * @func    dwLcdWrite
- *
- * @desc    Send message to lcd's queue.
- *
- * @arg     None
- *
- * @ret     Zero
- ******************************************************************************/
-static DWORD dwLcdWrite(void)
-{
-    xMessage.Message = sLcdMessage;
-    xMessage.byColumn = LCD_FIRST_COLUMN;
-    xMessage.byRow = LCD_FIRST_LINE;
-
-    xQueueSend(lcd_xQueue, &xMessage, portMAX_DELAY);
-
-    vTaskDelay(2000 / portTICK_RATE_MS);
 
     return 0;
 }

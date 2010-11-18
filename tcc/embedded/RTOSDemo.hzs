@@ -39,6 +39,8 @@
   <ProjectSessionItem path="embedded;embedded" name="unnamed" />
   <ProjectSessionItem path="embedded;embedded;Demo Source" name="unnamed" />
   <ProjectSessionItem path="embedded;embedded;FreeRTOS.org Source" name="unnamed" />
+  <ProjectSessionItem path="embedded;embedded;System Files" name="unnamed" />
+  <ProjectSessionItem path="embedded;embedded;uIP Source" name="unnamed" />
  </Project>
  <Register1>
   <RegisterWindow unsignedDisplays="" asciiDisplays="" octalDisplays="" openGroups="" visibleGroups="" decimalDisplays="" binaryDisplays="" />
@@ -69,5 +71,5 @@
   <Watches active="0" />
  </Watch4>
  <Files/>
- <ARMCrossStudioWindow activeProject="embedded" autoConnectTarget="" debugSearchFileMap="" fileDialogInitialDirectory="\\VBOXSVR\ifsc\tcc\embedded\rtos" fileDialogDefaultFilter="*.cpp;*.cxx;*.cc;*.c;*.h" autoConnectCapabilities="0" debugSearchPath="" buildConfiguration="ARM Flash Release" />
+ <ARMCrossStudioWindow activeProject="embedded" autoConnectTarget="" debugSearchFileMap="" fileDialogInitialDirectory="\\VBOXSVR\git\ifsc\tcc\embedded" fileDialogDefaultFilter="" autoConnectCapabilities="0" debugSearchPath="" buildConfiguration="ARM Flash Release" />
 </session>

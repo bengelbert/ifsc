@@ -160,8 +160,8 @@ void vUART_ISR_Handler (void)
   LCDMessage.Message = xSerialMessage;
   LCDMessage.byColumn = 0;
 
-  lcd_clear();
-  lcd_goToXY(1, 1);
+  lcd16x2_clear();
+  lcd16x2_goto_xy(1, 1);
 
   /* Send the message to the LCD gatekeeper for display. */
   xQueueSend(xLCDQueue, &LCDMessage, portMAX_DELAY);
