@@ -126,6 +126,7 @@ clock_time_t clock_time(void)
 
 void vuIP_Task(void *pvParameters)
 {
+    client_t *client = NULL;
     portBASE_TYPE i;
     lcd16x2_t *lcd = pvParameters;
     struct timer periodic_timer, arp_timer;
@@ -137,8 +138,10 @@ void vuIP_Task(void *pvParameters)
     /* Initialise the uIP stack. */
     timer_set(&periodic_timer, configTICK_RATE_HZ / 2);
     timer_set(&arp_timer, configTICK_RATE_HZ * 10);
-    uip_init();
-    client_init(lcd);
+
+    client = client_new(lcd);
+    uip_init(client_appcall, client);
+    client_connect(client);
 
     /* Initialise the MAC. */
     while (Init_EMAC() != pdPASS) {

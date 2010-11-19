@@ -92,6 +92,14 @@
 /*---------------------------------------------------------------------------*/
 /* Variable definitions. */
 
+typedef struct uip_user_s uip_user_t;
+
+struct uip_user_s {
+    uip_callback_t func;
+    void *data;
+};
+
+/******************************************************************************/
 
 /* The IP address of this host. If it is defined to be fixed (by
    setting UIP_FIXEDADDR to 1 in uipopt.h), the address is set
@@ -185,6 +193,11 @@ struct uip_udp_conn uip_udp_conns[UIP_UDP_CONNS];
 static u16_t ipid; /* Ths ipid variable is an increasing
 				number that is used for the IP ID
 				field. */
+
+static uip_user_t uip_user = {
+    .data = NULL,
+    .func = NULL
+};
 
 void uip_setipid(u16_t id)
 {
@@ -396,8 +409,13 @@ uip_udpchksum(void)
 
 /*---------------------------------------------------------------------------*/
 
-void uip_init(void)
+void
+uip_init(uip_callback_t func,
+        void *data)
 {
+    uip_user.data = data;
+    uip_user.func = func;
+
     for (c = 0; c < UIP_LISTENPORTS; ++c) {
         uip_listenports[c] = 0;
     }
@@ -723,7 +741,7 @@ uip_process(u8_t flag)
         if ((uip_connr->tcpstateflags & UIP_TS_MASK) == UIP_ESTABLISHED &&
                 !uip_outstanding(uip_connr)) {
             uip_flags = UIP_POLL;
-            UIP_APPCALL();
+            uip_user.func(uip_user.data);//UIP_APPCALL();
             goto appsend;
         }
         goto drop;
@@ -775,7 +793,7 @@ uip_process(u8_t flag)
                            UIP_TIMEDOUT to inform the application that the
                            connection has timed out. */
                         uip_flags = UIP_TIMEDOUT;
-                        UIP_APPCALL();
+                        uip_user.func(uip_user.data);//UIP_APPCALL();
 
                         /* We also send a reset packet to the remote host. */
                         BUF->flags = TCP_RST | TCP_ACK;
@@ -814,7 +832,7 @@ uip_process(u8_t flag)
                            the code for sending out the packet (the apprexmit
                            label). */
                         uip_flags = UIP_REXMIT;
-                        UIP_APPCALL();
+                        uip_user.func(uip_user.data);//UIP_APPCALL();
                         goto apprexmit;
 
                     case UIP_FIN_WAIT_1:
@@ -829,7 +847,7 @@ uip_process(u8_t flag)
                 /* If there was no need for a retransmission, we poll the
                    application for new data. */
                 uip_flags = UIP_POLL;
-                UIP_APPCALL();
+                uip_user.func(uip_user.data);//UIP_APPCALL();
                 goto appsend;
             }
         }
@@ -1418,7 +1436,7 @@ found:
         uip_connr->tcpstateflags = UIP_CLOSED;
         UIP_LOG("tcp: got reset, aborting connection.");
         uip_flags = UIP_ABORT;
-        UIP_APPCALL();
+        uip_user.func(uip_user.data);//UIP_APPCALL();
         goto drop;
     }
     /* Calculated the length of the data, if the application has sent
@@ -1507,7 +1525,7 @@ found:
                 uip_add_rcv_nxt(uip_len);
             }
             uip_slen = 0;
-            UIP_APPCALL();
+            uip_user.func(uip_user.data);//UIP_APPCALL();
             goto appsend;
         }
         goto drop;
@@ -1562,12 +1580,12 @@ found:
             uip_connr->len = 0;
             uip_len = 0;
             uip_slen = 0;
-            UIP_APPCALL();
+            uip_user.func(uip_user.data);//UIP_APPCALL();
             goto appsend;
         }
         /* Inform the application that the connection failed */
         uip_flags = UIP_ABORT;
-        UIP_APPCALL();
+        uip_user.func(uip_user.data);//UIP_APPCALL();
         /* The connection is closed after we send the RST */
         uip_conn->tcpstateflags = UIP_CLOSED;
         goto reset;
@@ -1594,7 +1612,7 @@ found:
             if (uip_len > 0) {
                 uip_flags |= UIP_NEWDATA;
             }
-            UIP_APPCALL();
+            uip_user.func(uip_user.data);//UIP_APPCALL();
             uip_connr->len = 1;
             uip_connr->tcpstateflags = UIP_LAST_ACK;
             uip_connr->nrtx = 0;
@@ -1671,7 +1689,7 @@ found:
            send, uip_len must be set to 0. */
         if (uip_flags & (UIP_NEWDATA | UIP_ACKDATA)) {
             uip_slen = 0;
-            UIP_APPCALL();
+            uip_user.func(uip_user.data);//UIP_APPCALL();
 
         appsend:
 
@@ -1752,7 +1770,7 @@ found:
         if (uip_flags & UIP_ACKDATA) {
             uip_connr->tcpstateflags = UIP_CLOSED;
             uip_flags = UIP_CLOSE;
-            UIP_APPCALL();
+            uip_user.func(uip_user.data);//UIP_APPCALL();
         }
         break;
 
@@ -1773,7 +1791,7 @@ found:
             }
             uip_add_rcv_nxt(1);
             uip_flags = UIP_CLOSE;
-            UIP_APPCALL();
+            uip_user.func(uip_user.data);//UIP_APPCALL();
             goto tcp_send_ack;
         } else if (uip_flags & UIP_ACKDATA) {
             uip_connr->tcpstateflags = UIP_FIN_WAIT_2;
@@ -1794,7 +1812,7 @@ found:
             uip_connr->timer = 0;
             uip_add_rcv_nxt(1);
             uip_flags = UIP_CLOSE;
-            UIP_APPCALL();
+            uip_user.func(uip_user.data);//UIP_APPCALL();
             goto tcp_send_ack;
         }
         if (uip_len > 0) {

@@ -60,10 +60,11 @@ static void
 app_start_server(void)
 {
     gsm02_async_queue_init();
+    mcu_async_queue_init();
 
-    service_socket_add(30000, G_CALLBACK(mcu_connect_handler), NULL);
-    service_socket_add(30001, G_CALLBACK(gsm02_connect_handler), NULL);
-    service_socket_add(30002, G_CALLBACK(script_connect_handler), NULL);
+    service_socket_add(50000, G_CALLBACK(mcu_connect_handler), NULL);
+    service_socket_add(50001, G_CALLBACK(gsm02_connect_handler), NULL);
+    service_socket_add(50002, G_CALLBACK(script_connect_handler), NULL);
 }
 
 /******************************************************************************/

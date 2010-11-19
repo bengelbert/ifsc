@@ -32,6 +32,7 @@ extern "C" {
 #include "commom.h"
 #include "psock.h"
 #include "uipopt.h"
+#include "lcd16x2.h"
 
 /******************************************************************************
  **
@@ -41,9 +42,11 @@ extern "C" {
  ******************************************************************************/
 #define CLIENT_CMD_FILE_INITIALIZATION  (0x00)
 
-/******************************************************************************
- ** 2.2 Global type definitions
- ******************************************************************************/
+/******************************************************************************/
+/*
+ * Type definitions
+ */
+typedef struct client_s client_t;
 typedef struct client_state_s uip_tcp_appstate_t, client_state_t;
 
 struct client_state_s {
@@ -52,22 +55,28 @@ struct client_state_s {
     struct psock psock;
 };
 
-/******************************************************************************
- ** 2.3 Global macros
- ******************************************************************************/
-/******************************************************************************
- ** 2.4 Global variables
- ******************************************************************************/
-/******************************************************************************
- ** 2.5 Public function prototypes
- ******************************************************************************/
-void client_appcall(void);
-void client_connect(void);
-void client_init(void *lcd);
+/**
+ * 
+ * @param data
+ */
+void
+client_appcall(void *data);
 
-#ifndef UIP_APPCALL
-#define UIP_APPCALL client_appcall
-#endif
+/**
+ * 
+ * @param self
+ */
+void
+client_connect(client_t *self);
+
+/**
+ * 
+ * @param lcd
+ * @return
+ */
+client_t *
+client_new(lcd16x2_t *lcd);
+
 
 /******************************************************************************
  **

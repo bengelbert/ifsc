@@ -59,6 +59,7 @@
  * Repressentation of an IP address.
  *
  */
+typedef void (*uip_callback_t)(void *data);
 typedef u16_t uip_ip4addr_t[2];
 typedef u16_t uip_ip6addr_t[8];
 #if UIP_CONF_IPV6
@@ -66,12 +67,6 @@ typedef uip_ip6addr_t uip_ipaddr_t;
 #else /* UIP_CONF_IPV6 */
 typedef uip_ip4addr_t uip_ipaddr_t;
 #endif /* UIP_CONF_IPV6 */
-
-/* IP address configuration. */
-#define uipIP_ADDR0		192
-#define uipIP_ADDR1		168
-#define uipIP_ADDR2		0
-#define uipIP_ADDR3		2
 
 /*---------------------------------------------------------------------------*/
 /* First, the functions that should be called from the
@@ -191,7 +186,9 @@ typedef uip_ip4addr_t uip_ipaddr_t;
  * This function should be called at boot up to initilize the uIP
  * TCP/IP stack.
  */
-void uip_init (void);
+void
+uip_init(uip_callback_t func,
+        void *user_data);
 
 /**
  * uIP initialization function.
