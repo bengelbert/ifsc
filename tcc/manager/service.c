@@ -178,6 +178,18 @@ service_message_append_string_sized(GByteArray *message,
 
 /******************************************************************************/
 
+gpointer
+service_message_get_payload(service_t *this)
+{
+    g_assert(this);
+    g_assert(this->stream);
+    g_assert(this->stream->buffer);
+
+    return (gpointer) &(this->stream->buffer[SERVICE_MESSAGE_HEADER_LEN]);
+}
+
+/******************************************************************************/
+
 guint8
 service_message_header_get_command(service_t *self)
 {
@@ -257,7 +269,6 @@ service_message_read_data(GObject *source,
     g_assert(obj);
 
     nread = g_input_stream_read_finish(in, result, &error);
-    g_assert_no_error(error);
 
     if (nread > 0) {
 
@@ -279,6 +290,24 @@ service_message_read_data(GObject *source,
             obj->user->destroy_func(obj->user->data);
         }
     }
+}
+
+/******************************************************************************/
+
+guint8 *
+service_message_unpack_u8(guint *data,
+        guint8 *pack)
+{
+    size_t len = sizeof (guint8);
+
+    g_assert(data);
+    g_assert(pack);
+    
+    *data = 0;
+
+    memcpy((guint8 *) data, pack, len);
+
+    return pack + len;
 }
 
 /******************************************************************************/

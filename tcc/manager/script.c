@@ -12,6 +12,8 @@
  */
 typedef struct script_s script_t;
 
+/******************************************************************************/
+
 struct script_s {
     service_t *service;
     GMainLoop *loop;
@@ -120,6 +122,24 @@ script_new(GSocketConnection *connection)
 /******************************************************************************/
 
 static void
+script_recv_dtmf(script_t *this)
+{
+    guint dtmf = 0;
+    guint8 *pack = NULL;
+
+    g_assert(this);
+
+    message("SCRIPT", "EVENT RECV ---- [ DTMF ]");
+    
+    pack = service_message_get_payload(this->service);
+    pack = service_message_unpack_u8(&dtmf, pack);
+
+    mcu_async_queue_push(dtmf);
+}
+
+/******************************************************************************/
+
+static void
 script_recv_pack_handler(gpointer user_data)
 {
     script_t *obj = user_data;
@@ -128,8 +148,9 @@ script_recv_pack_handler(gpointer user_data)
 
     switch (service_message_header_get_command(obj->service)) {
     case SCRIPT_CMD_RECV_DTMF:
-        message("SCRIPT", "EVENT RECV ---- [ DTMF ]");
+        script_recv_dtmf(obj);
         break;
+        
     default:
         warning("SCRIPT", "Invalid command [ 0x%x ]",
                 service_message_header_get_command(obj->service));

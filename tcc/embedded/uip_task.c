@@ -141,7 +141,7 @@ void vuIP_Task(void *pvParameters)
 
     client = client_new(lcd);
     uip_init(client_appcall, client);
-    client_connect(client);
+    client->connect(client);
 
     /* Initialise the MAC. */
     while (Init_EMAC() != pdPASS) {

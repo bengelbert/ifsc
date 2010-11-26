@@ -71,5 +71,5 @@
   <Watches active="0" />
  </Watch4>
  <Files/>
- <ARMCrossStudioWindow activeProject="embedded" autoConnectTarget="" debugSearchFileMap="" fileDialogInitialDirectory="\\VBOXSVR\git\ifsc\tcc\embedded" fileDialogDefaultFilter="" autoConnectCapabilities="0" debugSearchPath="" buildConfiguration="ARM Flash Release" />
+ <ARMCrossStudioWindow activeProject="embedded" autoConnectTarget="" debugSearchFileMap="" fileDialogInitialDirectory="\\VBOXSVR\git\ifsc\tcc\embedded" fileDialogDefaultFilter="*.cpp;*.cxx;*.cc;*.c;*.h" autoConnectCapabilities="0" debugSearchPath="" buildConfiguration="ARM Flash Release" />
 </session>

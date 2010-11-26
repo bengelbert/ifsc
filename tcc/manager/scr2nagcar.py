@@ -425,5 +425,4 @@ if(atualizalistimei == '1'):
 if (iddbfjconfig != '0' and dbfjbandas != '0' and dbfjstatus != '0' and dbfjpots != '0'):
    supp_dbfj_config(iddbfjconfig, dbfjbandas, dbfjstatus, dbfjpots)
 
-time.sleep(5)
 s.close()

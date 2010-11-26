@@ -16,14 +16,10 @@ mcu_async_queue_init(void);
 
 /**
  *
- * @param to
- * @param from
- * @param msg
+ * @param data
  */
 void
-mcu_async_queue_push(gchar *to,
-        gchar *from,
-        gchar *msg);
+mcu_async_queue_push(guint data);
 
 /**
  *

@@ -398,6 +398,7 @@ lcd_task(void *user_data)
         lcd16x2_clear(obj);
         lcd16x2_goto_xy(obj, data->x, data->y);
         lcd16x2_puts(obj, data->message);
+        free(data);
     }
 }
 

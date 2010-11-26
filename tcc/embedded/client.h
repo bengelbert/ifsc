@@ -49,6 +49,14 @@ extern "C" {
 typedef struct client_s client_t;
 typedef struct client_state_s uip_tcp_appstate_t, client_state_t;
 
+/******************************************************************************/
+
+struct client_s {
+    void(*connect)(client_t *this);
+};
+
+/******************************************************************************/
+
 struct client_state_s {
     uint8_t connected;
     uint8_t state;
@@ -61,13 +69,6 @@ struct client_state_s {
  */
 void
 client_appcall(void *data);
-
-/**
- * 
- * @param self
- */
-void
-client_connect(client_t *self);
 
 /**
  * 

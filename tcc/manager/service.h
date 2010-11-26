@@ -125,6 +125,24 @@ service_message_header_unpack(service_t *self);
 
 /**
  * 
+ * @param this
+ * @return
+ */
+gpointer
+service_message_get_payload(service_t *this);
+
+/**
+ * 
+ * @param data
+ * @param pack
+ * @return
+ */
+guint8 *
+service_message_unpack_u8(guint *data,
+        guint8 *pack);
+
+/**
+ * 
  * @param connection
  * @return
  */

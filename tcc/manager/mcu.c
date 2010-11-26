@@ -20,8 +20,8 @@
 #define MCU_CMD_RECV_CONF_REQUEST   0x09
 
 #define MCU_CMD_SEND_KEEP_ALIVE         0x20
+#define MCU_CMD_SEND_DTMF               0x21
 #define MCU_CMD_SEND_STARTUP_CHANNEL    0x23
-#define MCU_CMD_SEND_CONF               0x24
 #define MCU_CMD_SEND_NEIGHBOURS_LIST    0x26
 #define MCU_CMD_SEND_SMS                0x27
 
@@ -70,18 +70,6 @@ struct mcu_tags_s {
 
 /**
  *
- * @param to
- * @param from
- * @param msg
- * @return
- */
-static mcu_async_queue_t *
-mcu_async_queue_new(gchar *to,
-        gchar *from,
-        gchar *msg);
-
-/**
- *
  * @param user_data
  * @return
  */
@@ -96,12 +84,14 @@ static void
 mcu_destroy(gpointer user_data);
 
 /**
- *
+ * 
  * @param message
+ * @param dtmf
  * @return
  */
 static GByteArray *
-mcu_make_conf(GByteArray *message);
+mcu_make_dtmf(GByteArray *message,
+        guint dtmf);
 
 /**
  *
@@ -152,19 +142,21 @@ static void
 mcu_recv_pack_handler(gpointer user_data);
 
 /**
+ * 
+ * @param self
+ * @param dtmf
+ */
+static void
+mcu_send_dtmf(mcu_t *self,
+        guint dtmf);
+
+/**
  *
  * @param user_data
  * @return
  */
 static gboolean
 mcu_send_keep_alive(gpointer user_data);
-
-/**
- *
- * @param mcu
- */
-static void
-mcu_send_conf(mcu_t *self);
 
 /**
  *
@@ -201,16 +193,13 @@ static GAsyncQueue *mcu_queue = NULL;
  * Function definitions
  */
 void
-mcu_async_queue_push(gchar *to,
-        gchar *from,
-        gchar *msg)
+mcu_async_queue_push(guint data)
 {
-    g_assert(from);
-    g_assert(msg);
-    g_assert(to);
+    guint *dtmf = g_new0(guint , 1);
 
-    g_async_queue_push(mcu_queue,
-            mcu_async_queue_new(to, from, msg));
+    *dtmf = data;
+
+    g_async_queue_push(mcu_queue, dtmf);
 }
 
 /******************************************************************************/
@@ -225,44 +214,17 @@ mcu_async_queue_init(void)
 
 /******************************************************************************/
 
-static mcu_async_queue_t *
-mcu_async_queue_new(gchar *to,
-        gchar *from,
-        gchar *msg)
-{
-    mcu_async_queue_t *queue = NULL;
-
-    g_assert(from);
-    g_assert(msg);
-    g_assert(to);
-
-    queue = g_new0(mcu_async_queue_t, 1);
-
-    queue->from = g_strdup(from);
-    queue->msg = g_strdup(msg);
-    queue->to = g_strdup(to);
-
-    return queue;
-}
-
-/******************************************************************************/
-
 static gboolean
 mcu_async_try_pop(gpointer user_data)
 {
     mcu_t *obj = user_data;
-    mcu_async_queue_t *queue = NULL;
+    guint *dtmf = NULL;
 
-    queue = g_async_queue_try_pop(mcu_queue);
+    dtmf = g_async_queue_try_pop(mcu_queue);
 
-    if (queue) {
-        message("MCU", "QUEUE --------- [ SMS (%s => %s: %s) ]",
-                queue->from,
-                queue->to,
-                queue->msg);
-
-        mcu_send_sms(obj, queue);
-        mcu_queue_free(queue);
+    if (dtmf) {
+        mcu_send_dtmf(obj, *dtmf);
+        g_free(dtmf);
     } else {
         debug("MCU", "QUEUE --------- [ EMPTY ]");
     }
@@ -295,7 +257,7 @@ mcu_connect_handler(GThreadedSocketService *service,
             mcu_destroy,
             obj);
 
-    obj->tags->pop_queue = g_timeout_add(1000, mcu_async_try_pop, obj);
+    obj->tags->pop_queue = g_timeout_add(100, mcu_async_try_pop, obj);
     obj->tags->send_ping = g_timeout_add(10000, mcu_send_keep_alive, obj);
 
     g_main_loop_run(obj->loop);
@@ -320,6 +282,7 @@ mcu_destroy(gpointer user_data)
     g_main_loop_quit(obj->loop);
     g_main_loop_unref(obj->loop);
 
+    g_source_remove(obj->tags->pop_queue);
     g_source_remove(obj->tags->send_ping);
 
     g_free(obj);
@@ -328,25 +291,12 @@ mcu_destroy(gpointer user_data)
 /******************************************************************************/
 
 static GByteArray *
-mcu_make_conf(GByteArray *message)
+mcu_make_dtmf(GByteArray *message,
+        guint dtmf)
 {
     g_assert(message);
 
-    message = service_message_append_16(message, 900);
-    message = service_message_append_16(message, MCU_CONF_CHANNEL_INIT);
-    message = service_message_append_16(message, MCU_CONF_CHANNEL_RANGE);
-    message = service_message_append_string_sized(message, "172.23.255.254", MCU_IP_LEN);
-    message = service_message_append_string_sized(message, "172.23.255.254", MCU_IP_LEN);
-    message = service_message_append_string_sized(message, "172.23.255.254", MCU_IP_LEN);
-    message = service_message_append_16(message, 0x0724);
-    message = service_message_append_16(message, 0x0019);
-    message = service_message_append_16(message, 0x00AA);
-    message = service_message_append_16(message, 13);
-    message = service_message_append_string_sized(message, "", MCU_CBCH_LEN);
-    message = service_message_append_16(message, MCU_CONF_APPLICATION_NGCELL);
-    message = service_message_append_16(message, 15);
-    message = service_message_append_16(message, 1024);
-    message = service_message_append_16(message, MCU_CONF_MODE_RASTER);
+    message = service_message_append_16(message, dtmf);
 
     return message;
 }
@@ -448,9 +398,6 @@ mcu_recv_pack_handler(gpointer user_data)
     case MCU_CMD_RECV_CALL:
         message("MCU", "EVENT RECV ---- [ CALL ]");
         break;
-    case MCU_CMD_RECV_CONF_REQUEST:
-        mcu_send_conf(obj);
-        break;
     case MCU_CMD_RECV_DETACH:
         message("MCU", "EVENT RECV ---- [ DETACH ]");
         break;
@@ -476,18 +423,19 @@ mcu_recv_pack_handler(gpointer user_data)
 /******************************************************************************/
 
 static void
-mcu_send_conf(mcu_t *self)
+mcu_send_dtmf(mcu_t *self,
+        guint dtmf)
 {
     GByteArray *message = NULL;
 
     g_assert(self);
 
-    message("MCU", "EVENT SEND ---- [ CONF ]");
+    message("MCU", "EVENT SEND ---- [ DTMF (%02d) ]", dtmf);
 
     message = g_byte_array_new();
 
-    message = mcu_make_conf(message);
-    message = service_message_header_make(message, MCU_CMD_SEND_CONF);
+    message = mcu_make_dtmf(message, dtmf);
+    message = service_message_header_make(message, MCU_CMD_SEND_DTMF);
 
     service_output_stream_write(self->service, message);
 
