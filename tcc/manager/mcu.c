@@ -11,13 +11,7 @@
 #define MCU_SMS_MSG_LEN     160
 
 #define MCU_CMD_RECV_KEEP_ALIVE     0x00
-#define MCU_CMD_RECV_LOC_UPD_REJ    0x02
-#define MCU_CMD_RECV_CALL           0x03
-#define MCU_CMD_RECV_SMS            0x04
-#define MCU_CMD_RECV_DETACH         0x05
-#define MCU_CMD_RECV_LOC_UPD_ACC    0x06
-#define MCU_CMD_RECV_SCANNED_NEIGH  0x08
-#define MCU_CMD_RECV_CONF_REQUEST   0x09
+#define MCU_CMD_RECV_LED_STATE      0x01
 
 #define MCU_CMD_SEND_KEEP_ALIVE         0x20
 #define MCU_CMD_SEND_DTMF               0x21
@@ -95,32 +89,6 @@ mcu_make_dtmf(GByteArray *message,
 
 /**
  *
- * @param message
- * @return
- */
-static GByteArray *
-mcu_make_neighbours_list(GByteArray *message);
-
-/**
- *
- * @param message
- * @param sms_queue
- * @return
- */
-static GByteArray *
-mcu_make_sms(GByteArray *message,
-        mcu_async_queue_t *sms_queue);
-
-/**
- *
- * @param message
- * @return
- */
-static GByteArray *
-mcu_make_startup_channel(GByteArray *message);
-
-/**
- *
  * @param connection
  * @return
  */
@@ -128,11 +96,11 @@ static mcu_t *
 mcu_new(GSocketConnection *connection);
 
 /**
- *
- * @param queue
+ * 
+ * @param this
  */
 static void
-mcu_queue_free(mcu_async_queue_t *queue);
+mcu_recv_led_state_handler(mcu_t *this);
 
 /**
  *
@@ -157,29 +125,6 @@ mcu_send_dtmf(mcu_t *self,
  */
 static gboolean
 mcu_send_keep_alive(gpointer user_data);
-
-/**
- *
- * @param mcu
- */
-static void
-mcu_send_neighbours_list(mcu_t *self);
-
-/**
- *
- * @param self
- * @param sms_queue
- */
-static void
-mcu_send_sms(mcu_t *self,
-        mcu_async_queue_t *sms_queue);
-
-/**
- *
- * @param mcu
- */
-static void
-mcu_send_startup_channel(mcu_t *self);
 
 /******************************************************************************/
 /*
@@ -303,56 +248,7 @@ mcu_make_dtmf(GByteArray *message,
 
 /******************************************************************************/
 
-static GByteArray *
-mcu_make_neighbours_list(GByteArray *message)
-{
-    g_assert(message);
-
-    message = service_message_append_16(message, 0);
-    message = service_message_append_16(message, MCU_ORIG_ARFCN);
-
-    return message;
-}
-
-/******************************************************************************/
-
-static GByteArray *
-mcu_make_sms(GByteArray *message,
-        mcu_async_queue_t *sms_queue)
-{
-    g_assert(message);
-    g_assert(sms_queue);
-
-    message = service_message_append_string(message,
-            sms_queue->to,
-            MCU_SMS_TO_LEN);
-
-    message = service_message_append_string(message,
-            sms_queue->from,
-            MCU_SMS_FROM_LEN);
-
-    message = service_message_append_string(message,
-            sms_queue->msg,
-            MCU_SMS_MSG_LEN);
-
-    return message;
-}
-
-/******************************************************************************/
-
-static GByteArray *
-mcu_make_startup_channel(GByteArray *message)
-{
-    g_assert(message);
-
-    message = service_message_append_16(message, MCU_STARTUP_CHANNEL);
-
-    return message;
-}
-
-/******************************************************************************/
-
-static mcu_t *
+    static mcu_t *
 mcu_new(GSocketConnection *connection)
 {
     mcu_t *obj = NULL;
@@ -375,14 +271,22 @@ mcu_new(GSocketConnection *connection)
 /******************************************************************************/
 
 static void
-mcu_queue_free(mcu_async_queue_t *queue)
+mcu_recv_led_state_handler(mcu_t *this)
 {
-    g_assert(queue);
+    guint ad = 0;
+    guint8 *payload;
 
-    g_free(queue->from);
-    g_free(queue->msg);
-    g_free(queue->to);
-    g_free(queue);
+    payload = service_message_get_payload(this->service);
+
+    service_message_unpack_u16(&ad, payload);
+
+    if (ad) {
+        message("MCU", "EVENT RECV ---- [ LED ON (%d) ]", ad);
+        gsm02_async_queue_push("2006", "2010", "O Led esta ligado!");
+    } else {
+        message("MCU", "EVENT RECV ---- [ LED OFF (%d) ]", ad);
+        gsm02_async_queue_push("2006", "2010", "O Led esta desligado!");
+    }
 }
 
 /******************************************************************************/
@@ -395,25 +299,14 @@ mcu_recv_pack_handler(gpointer user_data)
     g_assert(obj);
 
     switch (service_message_header_get_command(obj->service)) {
-    case MCU_CMD_RECV_CALL:
-        message("MCU", "EVENT RECV ---- [ CALL ]");
+    case MCU_CMD_RECV_LED_STATE:
+        mcu_recv_led_state_handler(obj);
         break;
-    case MCU_CMD_RECV_DETACH:
-        message("MCU", "EVENT RECV ---- [ DETACH ]");
-        break;
+
     case MCU_CMD_RECV_KEEP_ALIVE:
         message("MCU", "EVENT RECV ---- [ KEEP_ALIVE ]");
         break;
-    case MCU_CMD_RECV_LOC_UPD_ACC:
-        message("MCU", "EVENT RECV ---- [ LOC_UPD_ACC ]");
-        break;
-    case MCU_CMD_RECV_LOC_UPD_REJ:
-        message("MCU", "EVENT RECV ---- [ LOC_UPD_REJ ]");
-        break;
-    case MCU_CMD_RECV_SCANNED_NEIGH:
-        mcu_send_startup_channel(obj);
-        mcu_send_neighbours_list(obj);
-        break;
+
     default:
         warning("MCU", "Invalid command [ 0x%x ]",
                 service_message_header_get_command(obj->service));
@@ -463,71 +356,6 @@ mcu_send_keep_alive(gpointer user_data)
     g_byte_array_free(message, TRUE);
 
     return TRUE;
-}
-
-/******************************************************************************/
-
-static void
-mcu_send_neighbours_list(mcu_t *self)
-{
-    GByteArray *message = NULL;
-
-    g_assert(self);
-
-    message("MCU", "EVENT SEND ---- [ NEIGHBOURS_LIST ]");
-
-    message = g_byte_array_new();
-
-    message = mcu_make_neighbours_list(message);
-    message = service_message_header_make(message, MCU_CMD_SEND_NEIGHBOURS_LIST);
-
-    service_output_stream_write(self->service, message);
-
-    g_byte_array_free(message, TRUE);
-}
-
-/******************************************************************************/
-
-static void
-mcu_send_sms(mcu_t *self,
-        mcu_async_queue_t *sms_queue)
-{
-    GByteArray *message = NULL;
-
-    g_assert(self);
-    g_assert(sms_queue);
-
-    message("MCU", "EVENT SEND ---- [ SMS ]");
-
-    message = g_byte_array_new();
-
-    message = mcu_make_sms(message, sms_queue);
-    message = service_message_header_make(message, MCU_CMD_SEND_SMS);
-
-    service_output_stream_write(self->service, message);
-
-    g_byte_array_free(message, TRUE);
-}
-
-/******************************************************************************/
-
-static void
-mcu_send_startup_channel(mcu_t *self)
-{
-    GByteArray *message = NULL;
-
-    g_assert(self);
-
-    message("MCU", "EVENT SEND ---- [ STARTUP_CHANNEL ]");
-
-    message = g_byte_array_new();
-
-    message = mcu_make_startup_channel(message);
-    message = service_message_header_make(message, MCU_CMD_SEND_STARTUP_CHANNEL);
-
-    service_output_stream_write(self->service, message);
-
-    g_byte_array_free(message, TRUE);
 }
 
 /******************************************************************************/

@@ -143,6 +143,16 @@ service_message_unpack_u8(guint *data,
 
 /**
  * 
+ * @param data
+ * @param pack
+ * @return
+ */
+guint8 *
+service_message_unpack_u16(guint *dst,
+        guint8 *src);
+
+/**
+ * 
  * @param connection
  * @return
  */

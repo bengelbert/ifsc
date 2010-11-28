@@ -64,8 +64,6 @@ script_connect_handler(GThreadedSocketService *service,
 
     message("SCRIPT", "EVENT --------- [ CONNECTED ]");
 
-    gsm02_async_queue_push("4488", "99102820", "Olha a mensagem");
-
     obj = script_new(connection);
     obj->loop = g_main_loop_new(NULL, FALSE);
 

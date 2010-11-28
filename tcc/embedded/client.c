@@ -22,6 +22,7 @@
 #define CLIENT_HEADER_LEN 15
 
 #define CLIENT_CMD_SEND_KEEP_ALIVE  0x00
+#define CLIENT_CMD_SEND_LED_STATE   0x01
 
 #define CLIENT_CMD_RECV_KEEP_ALIVE  0x20
 #define CLIENT_CMD_RECV_DTMF        0x21
@@ -58,6 +59,10 @@ struct client_real_s {
     
     void(*connected)(client_t * client);
 
+    void(*led_off)(void);
+
+    void(*led_on)(void);
+
     uint8_t(*message_get_cmd)(void *header);
 
     uint8_t(*message_get_n_bytes)(void *header);
@@ -65,9 +70,15 @@ struct client_real_s {
     void(*message_handler)(client_t *client,
             void *data);
 
+    size_t (*message_make_led_state)(client_real_t *this,
+        void *data);
+
     void(*message_make_header)(uint8_t cmd,
             void *data,
             size_t payload_len);
+
+    uint8_t *(*message_pack_16)(uint8_t *pack,
+            uint32_t value);
 
     uint16_t(*message_unpack_16)(uint8_t *pack);
 
@@ -77,6 +88,9 @@ struct client_real_s {
         client_message_t *message);
 
     void(*send_keep_alive)(client_t *client);
+
+    void(*send_led_state)(client_real_t *this);
+
 };
 
 /******************************************************************************/
@@ -118,6 +132,16 @@ client_message_get_n_bytes(void *data)
 
 /**
  * 
+ * @param this
+ * @param data
+ * @return
+ */
+static size_t
+client_message_make_led_state(client_real_t *this,
+        void *data);
+
+/**
+ * 
  * @param cmd
  * @param data
  * @param payload_len
@@ -130,10 +154,32 @@ client_message_make_header(uint8_t cmd,
 /**
  * 
  * @param pack
+ * @param value
+ * @return
+ */
+static uint8_t *
+client_message_pack_16(uint8_t *pack,
+        uint32_t value);
+
+/**
+ * 
+ * @param pack
  * @return
  */
 static uint16_t
 client_message_unpack_16(uint8_t *pack);
+
+/**
+ * 
+ */
+static void
+client_led_off(void);
+
+/**
+ *
+ */
+static void
+client_led_on(void);
 
 /**
  *
@@ -152,6 +198,13 @@ client_message_handler(client_t *client,
 static void
 client_recv_dtmf(client_t *client,
         client_message_t *message);
+
+/**
+ * 
+ * @param this
+ */
+static void
+client_send_led_state(client_real_t *this);
 
 /**
  * 
@@ -226,6 +279,22 @@ client_appcall(void *data)
 /******************************************************************************/
 
 static void
+client_led_off(void)
+{
+    FIO2CLR0 |= 1 << 3;
+}
+
+/******************************************************************************/
+
+static void
+client_led_on(void)
+{
+    FIO2SET0 |= 1 << 3;
+}
+
+/******************************************************************************/
+
+static void
 client_message_handler(client_t *client,
         void *data)
 {
@@ -258,7 +327,7 @@ client_message_make_header(uint8_t cmd,
         size_t payload_len)
 {
     client_message_t *header = data;
-    
+
     header->cmd = cmd;
     header->id = HTONS(0x0123);
     header->n_bytes = HTONS(CLIENT_HEADER_LEN + payload_len);
@@ -269,15 +338,44 @@ client_message_make_header(uint8_t cmd,
 
 /******************************************************************************/
 
+static size_t
+client_message_make_led_state(client_real_t *this,
+        void *data)
+{
+    uint8_t *payload = data;
+
+    payload = this->message_pack_16(payload, (FIO2PIN0 & (1 << 3)) >> 3);
+
+    return (size_t)(payload - (uint8_t *) data);
+}
+
+/******************************************************************************/
+
+static uint8_t *
+client_message_pack_16(uint8_t *pack,
+        uint32_t value)
+{
+    size_t len = 0;
+
+    len = sizeof (uint16_t);
+    value = HTONS(value);
+
+    memcpy(pack, (uint8_t *) & value, len);
+    
+    return pack + len;
+}
+
+/******************************************************************************/
+
 static uint16_t
 client_message_unpack_16(uint8_t *pack)
 {
     uint16_t data = 0;
-    
+
     memcpy((uint8_t *) &data, pack, 2);
-    
+
     data = HTONS(data);
-    
+
     return data;
 }
 
@@ -296,14 +394,19 @@ client_new(lcd16x2_t *lcd)
 
     obj->closed = client_uip_closed;
     obj->connected = client_uip_connected;
+    obj->led_off = client_led_off;
+    obj->led_on = client_led_on;
     obj->message_get_cmd = client_message_get_cmd;
     obj->message_get_n_bytes = client_message_get_n_bytes;
     obj->message_handler = client_message_handler;
     obj->message_make_header = client_message_make_header;
+    obj->message_make_led_state = client_message_make_led_state;
+    obj->message_pack_16 = client_message_pack_16;
     obj->message_unpack_16 = client_message_unpack_16;
     obj->newdata = client_uip_newdata;
     obj->recv_dtmf = client_recv_dtmf;
     obj->send_keep_alive = client_send_keep_alive;
+    obj->send_led_state = client_send_led_state;
 
     uip_ipaddr(obj->addr_serv, 192, 168, 0, 1);
     uip_ipaddr(obj->addr_local, 192, 168, 0, 2);
@@ -326,6 +429,20 @@ client_recv_dtmf(client_t *client,
 
     snprintf(lcd_message, CLIENT_BUFFER_LEN, "DTMF=%02d", dtmf);
 
+    switch (dtmf) {
+    case 0:
+        this->led_off();
+        break;
+        
+    case 1:
+        this->led_on();
+        break;
+
+    case 2:
+        this->send_led_state(this);
+        break;
+    }
+
     lcd16x2_async_queue_push(this->lcd,
             lcd_message,
             LCD_FIRST_COLUMN,
@@ -343,6 +460,21 @@ client_send_keep_alive(client_t *client)
     this->message_make_header(CLIENT_CMD_SEND_KEEP_ALIVE, buffer, 0);
 
     uip_send(buffer, this->message_get_n_bytes(buffer));
+}
+
+/******************************************************************************/
+
+static void
+client_send_led_state(client_real_t *this)
+{
+    client_message_t message = {};
+    size_t payload_len = 0;
+
+    payload_len = this->message_make_led_state(this, message.payload);
+
+    this->message_make_header(CLIENT_CMD_SEND_LED_STATE, &message, payload_len);
+
+    uip_send(&message, this->message_get_n_bytes(&message));
 }
 
 /******************************************************************************/

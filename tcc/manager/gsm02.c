@@ -26,7 +26,7 @@
 #define GSM02_CMD_SEND_SMS              0x27
 
 #define GSM02_CONF_APPLICATION_NGCELL   4
-#define GSM02_CONF_CHANNEL_INIT         90
+#define GSM02_CONF_CHANNEL_INIT         600
 #define GSM02_CONF_CHANNEL_RANGE        5
 #define GSM02_CONF_MODE_RASTER          0
 
@@ -332,17 +332,17 @@ gsm02_make_conf(GByteArray *message)
 {
     g_assert(message);
 
-    message = service_message_append_16(message, 900);
+    message = service_message_append_16(message, 1800);
     message = service_message_append_16(message, GSM02_CONF_CHANNEL_INIT);
     message = service_message_append_16(message, GSM02_CONF_CHANNEL_RANGE);
-    message = service_message_append_string_sized(message, "172.23.255.254", GSM02_IP_LEN);
-    message = service_message_append_string_sized(message, "172.23.255.254", GSM02_IP_LEN);
-    message = service_message_append_string_sized(message, "172.23.255.254", GSM02_IP_LEN);
+    message = service_message_append_string_sized(message, "10.1.1.17", GSM02_IP_LEN);
+    message = service_message_append_string_sized(message, "10.1.1.17", GSM02_IP_LEN);
+    message = service_message_append_string_sized(message, "10.1.1.17", GSM02_IP_LEN);
     message = service_message_append_16(message, 0x0724);
     message = service_message_append_16(message, 0x0019);
     message = service_message_append_16(message, 0x00AA);
     message = service_message_append_16(message, 13);
-    message = service_message_append_string_sized(message, "", GSM02_CBCH_LEN);
+    message = service_message_append_string_sized(message, "1", GSM02_CBCH_LEN);
     message = service_message_append_16(message, GSM02_CONF_APPLICATION_NGCELL);
     message = service_message_append_16(message, 15);
     message = service_message_append_16(message, 1024);

@@ -86,6 +86,36 @@ static void vCheckTask(void *pvParameters);
  */
 extern void vuIP_Task(void *pvParameters);
 
+/**
+ * 
+ * @param user_data
+ */
+static void
+app_btn_task(void *user_data)
+{
+    lcd16x2_t *lcd = user_data;
+
+    for (;;) {
+        while (FIO1PIN2 & (1 << 3));
+        vTaskDelay(20);
+
+        lcd16x2_async_queue_push(lcd,
+                "BTN Pressed",
+                LCD_FIRST_COLUMN,
+                LCD_FIRST_LINE);
+
+        while (!(FIO1PIN2 & (1 << 3)));
+        vTaskDelay(20);
+
+        lcd16x2_async_queue_push(lcd,
+                "BTN Released",
+                LCD_FIRST_COLUMN,
+                LCD_FIRST_LINE);
+    }
+}
+
+/******************************************************************************/
+
 int main(void)
 {
     lcd16x2_t *lcd = NULL;
@@ -99,6 +129,8 @@ int main(void)
     xTaskCreate(vuIP_Task, (signed portCHAR *) "uIP", mainBASIC_WEB_STACK_SIZE, lcd, mainCHECK_TASK_PRIORITY - 1, NULL);
     //xTaskCreate(mmc_vTask, (signed portCHAR *) "MMC", configMINIMAL_STACK_SIZE, NULL, mainCHECK_TASK_PRIORITY - 1, NULL);
     xTaskCreate(lcd_task, (signed portCHAR *) "LCD", configMINIMAL_STACK_SIZE, lcd, mainCHECK_TASK_PRIORITY - 1, NULL);
+
+    xTaskCreate(app_btn_task, (signed portCHAR *) "BTN", configMINIMAL_STACK_SIZE, lcd, mainCHECK_TASK_PRIORITY - 1, NULL);
 
     /* Start the scheduler. */
     vTaskStartScheduler();

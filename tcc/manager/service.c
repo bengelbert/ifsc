@@ -312,6 +312,26 @@ service_message_unpack_u8(guint *data,
 
 /******************************************************************************/
 
+guint8 *
+service_message_unpack_u16(guint *dst,
+        guint8 *src)
+{
+    size_t len = sizeof (guint16);
+
+    g_assert(dst);
+    g_assert(src);
+
+    *dst = 0;
+
+    memcpy((guint8 *) dst, src, len);
+
+    *dst = g_htons(*dst);
+
+    return src + len;
+}
+
+/******************************************************************************/
+
 service_t *
 service_new(GSocketConnection *connection)
 {
