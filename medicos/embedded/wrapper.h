@@ -27,6 +27,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <util/atomic.h>
 #include <util/delay.h>
 
@@ -42,6 +43,7 @@ extern "C" {
 
 #include "cmdlineconf.h"
 #include "global.h"
+#include "histogram.h"
 #include "timer.h"
 
 #ifdef	__cplusplus

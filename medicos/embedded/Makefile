@@ -88,6 +88,7 @@ PROJECTNAME=eletro_medic
 # Use .cc, .cpp or .C suffix for C++ files, use .S 
 # (NOT .s !!!) for assembly source code files.
 PRJSRC	= main.c \
+	histogram.c \
 	timer.c \
 	rprintf.c \
 	uart.c \
