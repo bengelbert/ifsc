@@ -89,11 +89,11 @@ PROJECTNAME=eletro_medic
 # (NOT .s !!!) for assembly source code files.
 PRJSRC	= main.c \
 	histogram.c \
-	timer.c \
 	rprintf.c \
 	uart.c \
 	buffer.c \
 	cmdline.c \
+	movavg.c \
 
 # additional includes (e.g. -I/path/to/mydir)
 INC=    -I/usr/lib/avr/include\

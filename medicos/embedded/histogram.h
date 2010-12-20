@@ -10,6 +10,8 @@ extern "C" {
 
 #include "wrapper.h"
 
+#define HISTOGRAM(obj)  ((histogram_t *) obj)
+
 typedef struct _histogram   histogram_t;
 
 /**
@@ -19,7 +21,7 @@ typedef struct _histogram   histogram_t;
  * @param n_samples
  */
 void
-histogram_calc(histogram_t *t,
+histogram_do(histogram_t *t,
         float *samples,
         size_t n_samples);
 
@@ -44,7 +46,7 @@ histogram_print(histogram_t *t);
  */
 void
 histogram_set_n_baselines(histogram_t *t,
-        uint32_t val);
+        uint16_t val);
 
 /**
  * 
@@ -53,7 +55,7 @@ histogram_set_n_baselines(histogram_t *t,
  */
 void
 histogram_set_precision(histogram_t *t,
-        uint32_t val);
+        uint16_t val);
 
 #ifdef	__cplusplus
 }

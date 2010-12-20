@@ -1,80 +1,110 @@
 /**
  * @file    main.c
  */
+#include "teste01.h"
+#include "wrapper.h"
 
-#include <stdio.h>
-#include <stdint.h>
+typedef struct {
+    uint8_t *name;
+    uint8_t *description;
+    CmdlineFuncPtrType func;
+    void *data;
+} main_cmdline;
 
-#include "histogram.h"
+/**
+ * 
+ * @param cmds
+ */
+static void
+main_cmdline_help(void *arg);
 
-static float samples[] = {
-    -6.0000000e+000,
-    -3.9062460e+000,
-    -3.9062460e+000,
-    3.9062460e+000,
-    -9.7656170e+000,
-    -9.7656170e+000,
-    -7.8124920e+000,
-    3.9062470e+000,
-    -0.0000000e+000,
-    -5.8593700e+000,
-    1.1718740e+001,
-    1.7578110e+001,
-    -9.7656170e+000,
-    -1.5624988e+001,
-    5.8593690e+000,
-    7.8124940e+000,
-    1.9531230e+000,
-    -0.0000000e+000,
-    3.9062460e+000,
-    1.7578110e+001,
-    1.1718740e+001,
-    1.1718740e+001,
-    1.3671864e+001,
-    5.8593700e+000,
-    9.7656160e+000,
-    3.9062460e+000,
-    -5.8593690e+000,
-    -7.8124920e+000,
-    -1.9531235e+001,
-    -3.9062460e+000,
-    -1.5624987e+001,
-    -2.9296848e+001,
-    -2.5390602e+001,
-    -1.1718742e+001,
-    -5.8593690e+000,
-    -1.7578110e+001,
-    -1.1718740e+001,
-    -0.0000000e+000,
-    -1.9531230e+000,
-    -7.8124930e+000,
-    -1.3671864e+001,
-    -5.8593700e+000,
-    -7.8124930e+000,
-    -1.9531230e+000,
-    -7.8124930e+000,
-    -1.9531233e+001,
-    -3.9062460e+000,
-    -3.9062460e+000,
-    -9.7656160e+000,
-    -7.8124930e+000,
-    -7.8124930e+000,
-    1.9531230e+000
+/**
+ * 
+ * @param data
+ */
+static void
+main_cmdline_histogram(void *data);
+
+/**
+ * 
+ * @param data
+ */
+static void
+main_cmdline_movavg(void *data);
+
+/******************************************************************************/
+
+static main_cmdline cmds[] = {
+    {(uint8_t *) "help", (uint8_t *) "      - help!", main_cmdline_help, NULL},
+    {(uint8_t *) "histogram", (uint8_t *) " - print the histogram.", main_cmdline_histogram, NULL},
+    {(uint8_t *) "moving-avg", (uint8_t *) "- print the moving averaging.", main_cmdline_movavg, NULL},
+    {NULL}
 };
 
-#define NUMBER_OF_SAMPLES   ((size_t) sizeof (samples) / sizeof (float))
+/******************************************************************************/
+
+static void
+main_cmdline_help(void *arg)
+{
+    uint32_t i;
+    
+    for (i = 0; cmds[i].name != NULL; i++) {
+        rprintf("%s %s\n", cmds[i].name, cmds[i].description);
+    }
+}
+
+/******************************************************************************/
+
+static void
+main_cmdline_histogram(void *data)
+{
+    histogram_t *t = NULL;
+    
+    t = histogram_get_type();
+
+    histogram_set_n_baselines(t, 48);
+    histogram_set_precision(t, 10000);
+    histogram_do(t, teste01_samples, TESTE01_N_SAMPLES);
+    histogram_print(t);
+}
+
+/******************************************************************************/
+
+static void
+main_cmdline_movavg(void *data)
+{
+    movavg_do(teste01_samples, TESTE01_N_SAMPLES);
+}
+
+/******************************************************************************/
 
 int
 main(void)
 {
-    histogram_t *histogram = NULL;
+    uint8_t c;
+    uint32_t i;
+
+    outb(DDRD, 0xFF);
+    outb(PORTD, 0xFE);
+
+    uart_init();
+    uart_set_baud_rate(57600);
+    rprintfInit(uartSendByte);
+
+    cmdlineInit();
+    cmdlineSetOutputFunc(uartSendByte);
+    for (i = 0; cmds[i].name != NULL; i++) {
+        cmdlineAddCommand(cmds[i].name, cmds[i].func, cmds[i].data);
+    }
+    cmdlineInputFunc('\r');
+
+    for (;;) {
+        if (uartReceiveByte(&c)) {
+            cmdlineInputFunc(c);
+        }
+        
+        cmdlineMainLoop();
+    }
     
-    histogram = histogram_get_type();
-
-    histogram_set_n_baselines(histogram, 24);
-    histogram_set_precision(histogram, 10000);
-    histogram_calc(histogram, samples, NUMBER_OF_SAMPLES);
-    histogram_print(histogram);
-
     return 0;
 }

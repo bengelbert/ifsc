@@ -177,7 +177,7 @@
 /// \note	After running this init function, the processor
 /// I/O pins that used for uart communications (RXD, TXD)
 /// are no long available for general purpose I/O.
-void uartInit(void);
+void uart_init(void);
 
 //! Initializes transmit and receive buffers.
 /// Automatically called from uartInit()
@@ -189,7 +189,7 @@ void uartSetRxHandler(void (*rx_func)(unsigned char c));
 
 //! Sets the uart baud rate.
 /// Argument should be in bits-per-second, like \c uartSetBaudRate(9600);
-void uartSetBaudRate(u32 baudrate);
+void uart_set_baud_rate(u32 baudrate);
 
 //! Returns pointer to the receive buffer structure.
 ///

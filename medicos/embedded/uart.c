@@ -41,7 +41,7 @@ typedef void (*voidFuncPtru08)(unsigned char);
 volatile static voidFuncPtru08 UartRxFunc;
 
 // enable and initialize the uart
-void uartInit(void)
+void uart_init(void)
 {
 	// initialize the buffers
 	uartInitBuffers();
@@ -52,7 +52,7 @@ void uartInit(void)
 	outb(UCR, BV(RXCIE)|BV(TXCIE)|BV(RXEN)|BV(TXEN));
 
 	// set default baud rate
-	uartSetBaudRate(UART_DEFAULT_BAUD_RATE);  
+	uart_set_baud_rate(UART_DEFAULT_BAUD_RATE);
 	// initialize states
 	uartReadyTx = TRUE;
 	uartBufferedTx = FALSE;
@@ -86,7 +86,7 @@ void uartSetRxHandler(void (*rx_func)(unsigned char c))
 }
 
 // set the uart baud rate
-void uartSetBaudRate(u32 baudrate)
+void uart_set_baud_rate(u32 baudrate)
 {
 	// calculate division factor for requested baud rate, and set it
 	u16 bauddiv = ((F_CPU+(baudrate*8L))/(baudrate*16L)-1);

@@ -44,6 +44,7 @@ extern "C" {
 #include "cmdlineconf.h"
 #include "global.h"
 #include "histogram.h"
+#include "movavg.h"
 #include "timer.h"
 
 #ifdef	__cplusplus
