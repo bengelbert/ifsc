@@ -315,7 +315,7 @@
         <separator_between_if_more_than_two>, </separator_between_if_more_than_two>
         <separator_before_last> e </separator_before_last>
         <max_number_of_persons_to_display>3</max_number_of_persons_to_display>
-        <number_of_persons_to_display_if_more_than_max>2</number_of_persons_to_display_if_more_than_max>
+        <number_of_persons_to_display_if_more_than_max>1</number_of_persons_to_display_if_more_than_max>
         <overflow>, &lt;i&gt;et al.&lt;/i&gt;</overflow>
         <single_suffix></single_suffix>
         <multi_suffix></multi_suffix>
