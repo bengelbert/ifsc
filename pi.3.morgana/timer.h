@@ -31,7 +31,7 @@ typedef void* timer_data_t;
 /*
  * Macros
  */
-#define TIMER_FUNC(func)     ((timer_handle_t) (func))
+#define TIMER_HANDLE(func)   ((timer_handle_t) (func))
 #define TIMER_FUNC_DATA(data)((timer_data_t)   (data))
 
 /******************************************************************************/
