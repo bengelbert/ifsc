@@ -8,6 +8,7 @@
 
 #include "timer.h"
 
+/******************************************************************************/
 /*
  * Private constants
  */
@@ -29,66 +30,108 @@
 
 #define TCNT0_RATE_1MS      (255 - (1000 * (F_CPU/TIMER_US_RATE) / TIMER_PRESCALER_256))
 #define TCNT0_RATE_100US    (255 - (100 * (F_CPU/TIMER_US_RATE) / TIMER_PRESCALER_8))
-/******************************************************************************/
 
+/* timer states */
+#define TIMER_STATE_NULL       0
+#define TIMER_STATE_CREATED    1
+#define TIMER_STATE_WAITING      2
+#define TIMER_STATE_RUNNING    3
+#define TIMER_STATE_BLOCKED    4
+#define TIMER_STATE_TERMINATED 5
+
+/******************************************************************************/
 /*
- * Private type definitions
+ * Type definitions
  */
-typedef struct _timer    timer_t;
-typedef struct _timer_cb timer_cb_t;
+typedef struct _timer       timer_t;
+typedef struct _timer_cb    timer_cb_t;
+typedef struct _timer0_regs timer0_regs_t;
 
 struct _timer_cb {
     uint8_t      id;
-    uint8_t      active;
+    uint8_t      state;
     void*        data;
-    timer_func_t func;
+    timer_handle_t handle;
     uint16_t     timeout;
 };
 
 /******************************************************************************/
 
+struct _timer0_regs {
+    volatile uint8_t tccra;
+    volatile uint8_t tccrb;
+    volatile uint8_t tcnt;
+    volatile uint8_t ocra;
+    volatile uint8_t ocrb;
+};
+
+/******************************************************************************/
+
 struct _timer {
-    uint8_t           tcnt0;
-    timer_cb_t        cb[TIMER_N_FUNCS];
-    volatile uint8_t  n_funcs;
     volatile uint32_t ticks;
+    
+    volatile uint8_t n_funcs;
+    timer_cb_t       cb[TIMER_N_FUNCS];
 };
 
 /******************************************************************************/
 /*
- * Private function prototypes
+ * Funtion Prototypes
  */
-static uint8_t timer_poll(timer_cb_t* funcs);
-
-/*
- * Private variables
- */
-static timer_t        timer   = {0, {}, 0, 0};
-static timer0_regs_t* t0_regs = (timer0_regs_t *) TIMER0_BASE;
+static void timer_low_level_init    (void);
 
 /******************************************************************************/
+/*
+ * Macros
+ */
+#define TIMER0(obj)((timer0_regs_t*)(obj))
 
+/******************************************************************************/
+/*
+ * Variables
+ */
+static timer_t timer = {
+    0,
+    0,
+    {}
+};
+
+static timer0_regs_t* t0 = TIMER0(TIMER0_BASE);
+
+/******************************************************************************/
 /*
  * Function definitions
  */
+static void
+timer_low_level_init(void)
+{
+    t0->tccrb = TCCR0B_PRESCALER_256;
+    t0->tcnt  = 0;
+    
+    sbi(TIMSK0, TOIE0);
+}
+
+/******************************************************************************/
+
 uint8_t
-timer_attach(
-    uint16_t     timeout, 
-    timer_func_t func, 
-    void*        data)
+timer_timeout_add(
+    uint16_t       timeout, 
+    timer_handle_t handle, 
+    timer_data_t   data)
 {
     uint8_t i = 0;
 
-    if (func == NULL) return -1;
+    if (handle == NULL) return -1;
     if (timeout == 0) return -1;
     if (timer.n_funcs == TIMER_N_FUNCS) return -1;
     
     for (i = 0; i < TIMER_N_FUNCS; i++) {
-        if (timer.cb[i].active == false) {
+        if (timer.cb[i].state == TIMER_STATE_NULL || 
+            timer.cb[i].state == TIMER_STATE_TERMINATED) {
             timer.cb[i].id      = i;
             timer.cb[i].data    = data;
-            timer.cb[i].func    = func;
-            timer.cb[i].active  = true;
+            timer.cb[i].handle  = handle;
+            timer.cb[i].state   = TIMER_STATE_WAITING;
             timer.cb[i].timeout = timeout;
             timer.n_funcs++;
             break;
@@ -101,7 +144,7 @@ timer_attach(
 /******************************************************************************/
 
 void
-timer_detach(uint8_t id)
+timer_source_remove(uint8_t id)
 {
     uint8_t i = 0;
     
@@ -109,8 +152,8 @@ timer_detach(uint8_t id)
         if (timer.cb[i].id == id) {
             timer.cb[i].id      = 0;
             timer.cb[i].data    = 0;
-            timer.cb[i].func    = NULL;
-            timer.cb[i].active  = false;
+            timer.cb[i].handle  = NULL;
+            timer.cb[i].state   = TIMER_STATE_TERMINATED;
             timer.cb[i].timeout = 0;
             timer.n_funcs--;
         }
@@ -122,44 +165,37 @@ timer_detach(uint8_t id)
 void
 timer_init(void)
 {
-    t0_regs->tccrb = TCCR0B_PRESCALER_256;
-    t0_regs->tcnt  = 0;
-    
-    sbi(TIMSK0, TOIE0);
-
-    DDRD = TCCR0A;
+    timer_low_level_init();
 
     timer.n_funcs = 0;
-    timer.tcnt0   = TCNT0_RATE_1MS;
     timer.ticks   = 0;
 }
 
 /******************************************************************************/
 
 void
-timer_loop(void)
+timer_loop_run(void)
 {
     uint8_t i;
+
+    sei();
     
     for (;;) {
         for (i = 0; i < timer.n_funcs; i++) {
-            timer_poll(&(timer.cb[i]));
+            
+            if (timer.cb[i].state == TIMER_STATE_RUNNING) {
+                
+                /* execute callback function */
+                if (timer.cb[i].handle(timer.cb[i].data)) {
+                    /* if return is true, put on standby state */
+                    timer.cb[i].state = TIMER_STATE_WAITING;
+                } else {
+                    /* else put on terminated state and free position */
+                    timer.cb[i].state = TIMER_STATE_TERMINATED;
+                }
+            }
         }
     }
-}
-
-/******************************************************************************/
-
-static uint8_t
-timer_poll(timer_cb_t* cb)
-{
-    if (cb->active) {
-        if (cb->func(cb->data)) {
-            cb->active = false;
-        }
-    }
-
-    return 0;
 }
 
 /******************************************************************************/
@@ -168,13 +204,17 @@ ISR(TIMER0_OVF_vect)
 {
     register uint8_t i = 0;
 
-    t0_regs->tcnt = timer.tcnt0;
+    t0->tcnt = TCNT0_RATE_1MS;
     
     timer.ticks++;
 
     for (i = 0; i < timer.n_funcs; i++) {
-        if (!(timer.ticks % timer.cb[i].timeout)) {
-            timer.cb[i].active = true;
+        
+        if (timer.cb[i].state == TIMER_STATE_WAITING) {
+            
+            if (!(timer.ticks % timer.cb[i].timeout)) {
+                timer.cb[i].state = TIMER_STATE_RUNNING;
+            }
         }
     }
 }

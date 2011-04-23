@@ -23,28 +23,25 @@ extern "C" {
 /*
  * Public type definition
  */
-typedef uint8_t (*timer_func_t)(void *);
+typedef uint8_t (*timer_handle_t)(void *);
 
-typedef struct _timer0_regs timer0_regs_t;
+typedef void* timer_data_t;
 
 /******************************************************************************/
-
-struct _timer0_regs {
-    volatile uint8_t tccra;
-    volatile uint8_t tccrb;
-    volatile uint8_t tcnt;
-    volatile uint8_t ocra;
-    volatile uint8_t ocrb;
-};
+/*
+ * Macros
+ */
+#define TIMER_FUNC(func)     ((timer_handle_t) (func))
+#define TIMER_FUNC_DATA(data)((timer_data_t)   (data))
 
 /******************************************************************************/
 /*
  * Public function prototypes
  */
-void    timer_init      (void);
-void    timer_loop      (void);
-uint8_t timer_attach    (uint16_t timeout, timer_func_t func, void* data);
-void    timer_detach    (uint8_t id);
+void    timer_init          (void);
+void    timer_loop_run      (void);
+uint8_t timer_timeout_add   (uint16_t timeout, timer_handle_t handle, timer_data_t data);
+void    timer_source_remove (uint8_t id);
 
 
 #ifdef	__cplusplus
