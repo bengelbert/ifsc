@@ -1,4 +1,5 @@
 #include <avr/interrupt.h>
+#include <avr/sfr_defs.h>
 #include <avr/io.h>
 #include <compat/deprecated.h>
 #include <stdbool.h>
@@ -116,24 +117,29 @@ timer_timeout_add(
     timer_handle_t handle, 
     timer_data_t   data)
 {
-    uint8_t i = 0;
+    uint8_t       i    = TIMER_MAX_TASKS;
+    timer_task_t* task = NULL;
 
-    if (handle == NULL) return -1;
     if (timeout == 0) return -1;
-    if (timer.n_tasks == TIMER_MAX_TASKS) return -1;
+    if (handle == NULL) return -1;
+    if (timer.n_tasks >= TIMER_MAX_TASKS) return -1;
     
-    for (i = 0; i < TIMER_MAX_TASKS; i++) {
-        if (timer.task[i].state == TIMER_STATE_NULL || 
-            timer.task[i].state == TIMER_STATE_TERMINATED) {
-            timer.task[i].id      = i;
-            timer.task[i].data    = data;
-            timer.task[i].handle  = handle;
-            timer.task[i].state   = TIMER_STATE_WAITING;
-            timer.task[i].timeout = timeout;
+    task = &(timer.task[0]);
+    
+    do {
+        if (task->state == TIMER_STATE_NULL || 
+            task->state == TIMER_STATE_TERMINATED) {
+            task->id      = i;
+            task->data    = data;
+            task->handle  = handle;
+            task->state   = TIMER_STATE_WAITING;
+            task->timeout = timeout;
             timer.n_tasks++;
             break;
+        } else {
+            task++;
         }
-    }
+    } while (--i != 0);
     
     return i;
 }
@@ -143,18 +149,26 @@ timer_timeout_add(
 void
 timer_source_remove(uint8_t id)
 {
-    uint8_t i = 0;
+    uint8_t       i    = timer.n_tasks;
+    timer_task_t* task = NULL;
     
-    for (i = 0; i < timer.n_tasks; i++) {
-        if (timer.task[i].id == id) {
-            timer.task[i].id      = 0;
-            timer.task[i].data    = 0;
-            timer.task[i].handle  = NULL;
-            timer.task[i].state   = TIMER_STATE_TERMINATED;
-            timer.task[i].timeout = 0;
+    if (i == 0) return;
+    
+    task = &(timer.task[0]);
+    
+    do {
+        if (task->id == id) {
+            task->id      = 0;
+            task->data    = 0;
+            task->handle  = NULL;
+            task->state   = TIMER_STATE_TERMINATED;
+            task->timeout = 0;
             timer.n_tasks--;
+            break;
+        } else {
+            task++;
         }
-    }
+    } while (i != 0);
 }
 
 /******************************************************************************/
@@ -173,23 +187,28 @@ timer_init(void)
 void
 timer_loop_run(void)
 {
-    uint8_t i;
+    uint8_t       i    = 0;
+    timer_task_t* task = NULL;
 
     sei();
     
     for (;;) {
-        for (i = 0; i < timer.n_tasks; i++) {
+        
+        task = &(timer.task[0]);
+        
+        for (i = timer.n_tasks; i != 0; i--) {
             
-            if (timer.task[i].state == TIMER_STATE_RUNNING) {
-                
+            if (task->state == TIMER_STATE_RUNNING) {
                 /* execute callback function */
-                if (timer.task[i].handle(timer.task[i].data)) {
+                if (task->handle(task->data)) {
                     /* if return is true, put on standby state */
-                    timer.task[i].state = TIMER_STATE_WAITING;
+                    task->state = TIMER_STATE_WAITING;
                 } else {
                     /* else put on terminated state and free position */
-                    timer.task[i].state = TIMER_STATE_TERMINATED;
+                    task->state = TIMER_STATE_TERMINATED;
                 }
+            } else {
+                task++;
             }
         }
     }
@@ -199,19 +218,18 @@ timer_loop_run(void)
 
 ISR(TIMER0_OVF_vect)
 {
-    register uint8_t i = 0;
+    timer_task_t*    task = timer.task;
+    register uint8_t i    = 0;
 
     t0->tcnt = TCNT0_RATE_1MS;
     
     timer.ticks++;
 
-    for (i = 0; i < timer.n_tasks; i++) {
-        
-        if (timer.task[i].state == TIMER_STATE_WAITING) {
-            
-            if (!(timer.ticks % timer.task[i].timeout)) {
-                timer.task[i].state = TIMER_STATE_RUNNING;
-            }
+    for (i = timer.n_tasks; i != 0; i--) {
+        if (task->state == TIMER_STATE_WAITING && !(timer.ticks % task->timeout)) {
+            task->state = TIMER_STATE_RUNNING;
+        } else {
+            task++;
         }
     }
 }
