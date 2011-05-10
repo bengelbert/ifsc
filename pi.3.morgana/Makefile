@@ -66,8 +66,8 @@
 # Name of target controller 
 # (e.g. 'at90s8515', see the available avr-gcc mmcu 
 # options for possible values)
-MCU			= atmega168
-MCU_FREQ	= 20000000
+MCU	    = atmega328
+MCU_FREQ    = 11059200
 
 # id to use with programmer
 # default: PROGRAMMER_MCU=$(MCU)
@@ -75,7 +75,7 @@ MCU_FREQ	= 20000000
 # accept the same MCU name as avr-gcc (for example
 # for ATmega8s, avr-gcc expects 'atmega8' and 
 # avrdude requires 'm8')
-PROGRAMMER_MCU=m168
+PROGRAMMER_MCU=m328p
 
 # Name of our project
 # (use a single word, e.g. 'myproject')
@@ -88,7 +88,7 @@ PROJECTNAME=pi3_morgana
 # Use .cc, .cpp or .C suffix for C++ files, use .S 
 # (NOT .s !!!) for assembly source code files.
 PRJSRC	= main.c \
-		  timer.c
+	  timer.c
 
 # additional includes (e.g. -I/path/to/mydir)
 INC=    -I/usr/lib/avr/include\

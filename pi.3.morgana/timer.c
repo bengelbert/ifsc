@@ -196,7 +196,7 @@ timer_loop_run(void)
         
         task = &(timer.task[0]);
         
-        for (i = timer.n_tasks; i != 0; i--) {
+        for (i = timer.n_tasks; i != 0; i--, task++) {
             
             if (task->state == TIMER_STATE_RUNNING) {
                 /* execute callback function */
@@ -207,9 +207,7 @@ timer_loop_run(void)
                     /* else put on terminated state and free position */
                     task->state = TIMER_STATE_TERMINATED;
                 }
-            } else {
-                task++;
-            }
+            } 
         }
     }
 }
@@ -228,9 +226,9 @@ ISR(TIMER0_OVF_vect)
     for (i = timer.n_tasks; i != 0; i--) {
         if (task->state == TIMER_STATE_WAITING && !(timer.ticks % task->timeout)) {
             task->state = TIMER_STATE_RUNNING;
-        } else {
-            task++;
-        }
+        } 
+        
+        task++;
     }
 }
 

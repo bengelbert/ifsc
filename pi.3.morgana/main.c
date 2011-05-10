@@ -17,6 +17,20 @@
 #include <compat/twi.h>
 #include <avr/interrupt.h>
 #include <stdio.h>
+#include <stdbool.h>
+
+#include "timer.h"
+
+/******************************************************************************/
+/*
+ * Constants
+ */
+#define LED_PORT PORTD
+#define LED1     PORTD4
+#define LED2     PORTD5
+#define LED3     PORTD6
+#define LED4     PORTD7
+
 //------------------------------------------------------------------------------------------------------------------
 //	Definitions RTC DS1307 - I2C Slave
 //------------------------------------------------------------------------------------------------------------------
@@ -60,6 +74,17 @@
 //------------------------------------------------------------------------------------------------------------------
 //	Global Variables
 //------------------------------------------------------------------------------------------------------------------
+
+/******************************************************************************/
+/*
+ * Function prototypes
+ */
+void    main_setup_io   (void);
+
+/******************************************************************************/
+/*
+ * Variables
+ */
 char ds1307_addr[7]; //
 char sdigit[3] = {'0', '0', '\0'};
 char *weekday[] = {"Sun", "Mon", "Tue", "Wed", "Thr", "Fri", "Sat"};
@@ -540,7 +565,7 @@ char getnumber(unsigned char min, unsigned char max) //Function is used to valid
 //------------------------------------------------------------------------------------------------------------------
 //	Subroutine Control Interrupt RTC DS1307/LM35 vs LCD
 //------------------------------------------------------------------------------------------------------------------
-
+#if 0
 ISR(TIMER0_OVF_vect) //Function TIMER0 interrupt service register function will be called every 10ms; and every time
 //its being called the function will increase its static internal variable by one variable(tenms)
 {
@@ -606,20 +631,21 @@ ISR(TIMER0_OVF_vect) //Function TIMER0 interrupt service register function will 
     //TIMER0 clock frequency with 1024 prescaler = 11.059.200 Hz / 1024 = 10.800 Hz
     //TCNT0 overflow period = (256 - 148) / 10.800 Hz = 0.01 Second = 10 ms
 }
+#endif
 //Assign I/O stream to UART
 FILE uart_str = FDEV_SETUP_STREAM(uart_putch, uart_getch, _FDEV_SETUP_RW);
 //------------------------------------------------------------------------------------------------------------------
 //	Subroutine Control Port Used
 //------------------------------------------------------------------------------------------------------------------
 
-void initIO(void)
+void 
+main_setup_io(void)
 {
-    //Initial PORT Used
-    DDRB = 0xFE; //Set PB0=Input, Others Output
+    DDRB  = 0xFE; /* Set PB0=Input, Others Output */
     PORTB = 0;
-    DDRC = 0; //Set PORTC as Input
+    DDRC  = 0;    /* Set PORTC as Input */
     PORTC = 0;
-    DDRD = 0xFF; //Set PORTD as Output
+    DDRD  = 0xFF; /* Set PORTD as Output */
     PORTD = 0;
 }
 //------------------------------------------------------------------------------------------------------------------
@@ -648,11 +674,14 @@ void Timer0_Interrupt(void)
     TIMSK0 = (1 << TOIE0); // Enable Counter Overflow Interrupt
     sei(); // Enable Interrupt
 }
-//------------------------------------------------------------------------------------------------------------------
-//	Subroutine check button enter Setup Mode
-//------------------------------------------------------------------------------------------------------------------
 
-void Button_Read(void)
+/******************************************************************************/
+/**
+ * 
+ * @desc Subroutine check button enter Setup Mode
+ */
+static void 
+main_button_read(void)
 {
     //Check if Button is pressed than enter to the Setup Configuration Mode
     if (bit_is_clear(PINB, PB0)) { //if button is pressed
@@ -752,14 +781,89 @@ void SetupMode_Write(void)
         }
     }
 }
-//------------------------------------------------------------------------------------------------------------------
-//	Main Routine
-//------------------------------------------------------------------------------------------------------------------
 
+/******************************************************************************/
+
+static uint8_t
+main_led_blink_stop(uint8_t id)
+{
+    timer_source_remove(id);
+
+    return false;
+}
+
+/******************************************************************************/
+
+static uint8_t
+main_led_blink(uint8_t led)
+{
+    LED_PORT ^= 1 << led;
+
+    return true;
+}
+
+/******************************************************************************/
+
+int
+main(void)
+{
+    main_setup_io();
+
+    //Define Output/Input Stream
+    stdout = stdin = &(uart_str);
+
+    //Initial LCD using 4 bits data interface
+    initlcd();
+    LCD_putcmd(0x0C, LCD_2CYCLE); //Display On, Cursor Off
+    LCD_putcmd(LCD_CLEAR, LCD_2CYCLE); //Clear LCD
+
+    //Initial ATMega168 UART Peripheral
+    uart_init();
+
+    //Initial ATMega168 TWI/I2C Peripheral
+    TWSR = 0x00; // Select Prescaler of 1
+
+    //SCL frequency = 11059200 / (16 + 2 * 47 * 1) = 98.743 khz
+    TWBR = 0x30; // 48 Decimal
+
+    //Control of the temperature sensor LM35 (PC1)
+    //Initial ATMega168 ADC Peripheral
+    ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1);
+
+    //Free running ADC Mode
+    //ADCSRB = 0x00;
+
+    //Disable digital input on ADC0 and ADC1
+    DIDR0 = 0x0E;
+
+    //Control Backlight LCD TIP120 (PB3)
+    //Initial ATMega168 PWM using Timer/Counter2 Peripheral
+    Timer2_lcd();
+
+    //Initial Configuration Mode PORTB (PB0)
+    mode = 0;
+
+    timer_init();
+    
+    timer_timeout_add(1000, TIMER_HANDLE(main_led_blink),   TIMER_FUNC_DATA(LED1));
+    timer_timeout_add(500,  TIMER_HANDLE(main_led_blink),   TIMER_FUNC_DATA(LED2));
+    timer_timeout_add(250,  TIMER_HANDLE(main_led_blink),   TIMER_FUNC_DATA(LED3));
+    timer_timeout_add(125,  TIMER_HANDLE(main_led_blink),   TIMER_FUNC_DATA(LED4));
+    timer_timeout_add(100,  TIMER_HANDLE(main_button_read), NULL);
+    timer_timeout_add(100,  TIMER_HANDLE(SetupMode_Write),  NULL);
+
+    timer_loop_run();
+    
+    return 0;
+}
+
+/******************************************************************************/
+
+#if 0
 int main(void)
 {
     //Initial PORT Used
-    initIO();
+    main_setup_io();
 
     //Define Output/Input Stream
     stdout = stdin = &uart_str;
@@ -800,12 +904,12 @@ int main(void)
     mode = 0;
 
     for (;;) {
-        Button_Read();
+        main_button_read();
         SetupMode_Write();
     }
     return 0;
 }
-
+#endif
 /*
 //TESTES AD:
 //---------
