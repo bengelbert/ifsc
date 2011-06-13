@@ -88,6 +88,7 @@ PROJECTNAME=pi3_morgana
 # Use .cc, .cpp or .C suffix for C++ files, use .S 
 # (NOT .s !!!) for assembly source code files.
 PRJSRC	= main.c \
+	  a2d.c \
 	  timer.c
 
 # additional includes (e.g. -I/path/to/mydir)

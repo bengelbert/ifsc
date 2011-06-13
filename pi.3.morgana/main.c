@@ -12,19 +12,38 @@
 //------------------------------------------------------------------------------------------------------------------
 //	Libraries
 //------------------------------------------------------------------------------------------------------------------
-#include <avr/io.h>
-#include <util/delay.h>
-#include <compat/twi.h>
+#include <avr/common.h>
+#include <avr/eeprom.h>
 #include <avr/interrupt.h>
-#include <stdio.h>
+#include <avr/io.h>
+#include <avr/pgmspace.h>
+#include <compat/deprecated.h>
+#include <compat/twi.h>
+#include <inttypes.h>
+#include <math.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <util/atomic.h>
+#include <util/delay.h>
 
+#include "a2d.h"
+#include "avrlibdefs.h"
+#include "avrlibtypes.h"
 #include "timer.h"
 
 /******************************************************************************/
 /*
- * Constants
+ * App constants
  */
+#define APP_SAMPLES         (256)
+#define APP_ALPHA           (1.0 - (1.0/APP_SAMPLES))
+#define APP_BETA            (1.0/APP_SAMPLES)
+
+#define APP_CURRENT_FACTOR  (25173.33/1024)
+#define APP_VOLTAGE_FACTOR  (342.2396821/1024)
+
 #define LED_PORT PORTD
 #define LED1     PORTD4
 #define LED2     PORTD5
@@ -77,9 +96,32 @@
 
 /******************************************************************************/
 /*
+ * App type definitions
+ */
+typedef struct app_s      app_t;
+typedef struct app_data_s app_data_t;
+
+/******************************************************************************/
+
+struct app_data_s {
+    u08    channel;
+    double factor;
+    u16    offset;
+    double rms;
+    double yn;
+};
+
+/******************************************************************************/
+
+struct app_s {
+    app_data_t current;
+    app_data_t voltage;
+};
+
+/******************************************************************************/
+/*
  * Function prototypes
  */
-void    main_setup_io   (void);
 
 /******************************************************************************/
 /*
@@ -638,16 +680,6 @@ FILE uart_str = FDEV_SETUP_STREAM(uart_putch, uart_getch, _FDEV_SETUP_RW);
 //	Subroutine Control Port Used
 //------------------------------------------------------------------------------------------------------------------
 
-void 
-main_setup_io(void)
-{
-    DDRB  = 0xFE; /* Set PB0=Input, Others Output */
-    PORTB = 0;
-    DDRC  = 0;    /* Set PORTC as Input */
-    PORTC = 0;
-    DDRD  = 0xFF; /* Set PORTD as Output */
-    PORTD = 0;
-}
 //------------------------------------------------------------------------------------------------------------------
 //	Subroutine Counter2/PWM Control Backlight LCD
 //------------------------------------------------------------------------------------------------------------------
@@ -784,6 +816,24 @@ void SetupMode_Write(void)
 
 /******************************************************************************/
 
+static bool
+main_data_rms(app_data_t* data)
+{
+    register u32 adc = 0;
+
+    adc = a2d_convert_10bit(data->channel);
+
+    adc -= data->offset;
+    
+    data->yn = fma(APP_ALPHA, data->yn, fma(APP_BETA, adc * adc, 0));
+
+    data->rms = fma(sqrt(data->yn), data->factor, 0);
+
+    return true;
+}
+
+/******************************************************************************/
+
 static uint8_t
 main_led_blink_stop(uint8_t id)
 {
@@ -807,7 +857,26 @@ main_led_blink(uint8_t led)
 int
 main(void)
 {
-    main_setup_io();
+    app_t app = {{}, {}};
+
+    app.current.channel = ADC_CH_ADC1;
+    app.current.factor  = APP_CURRENT_FACTOR;
+    app.current.offset  = 512;
+    app.current.rms     = 0;
+    app.current.yn      = 0;
+
+    app.voltage.channel = ADC_CH_ADC0;
+    app.voltage.factor  = APP_VOLTAGE_FACTOR;
+    app.voltage.offset  = 0;
+    app.voltage.rms     = 0;
+    app.voltage.yn      = 0;
+    
+    DDRB  = 0xFE; /* Set PB0=Input, Others Output */
+    PORTB = 0;
+    DDRC  = 0;    /* Set PORTC as Input */
+    PORTC = 0;
+    DDRD  = 0xFF; /* Set PORTD as Output */
+    PORTD = 0;
 
     //Define Output/Input Stream
     stdout = stdin = &(uart_str);
@@ -827,30 +896,23 @@ main(void)
     TWBR = 0x30; // 48 Decimal
 
     //Control of the temperature sensor LM35 (PC1)
-    //Initial ATMega168 ADC Peripheral
-    ADCSRA = (1 << ADEN) | (1 << ADPS2) | (1 << ADPS1);
 
-    //Free running ADC Mode
-    //ADCSRB = 0x00;
-
-    //Disable digital input on ADC0 and ADC1
-    DIDR0 = 0x0E;
-
-    //Control Backlight LCD TIP120 (PB3)
     //Initial ATMega168 PWM using Timer/Counter2 Peripheral
     Timer2_lcd();
 
     //Initial Configuration Mode PORTB (PB0)
     mode = 0;
 
-    timer_init();
+    a2dInit();
+    a2dSetPrescaler(ADC_PRESCALE_DIV8);
+    a2dSetReference(ADC_REFERENCE_AVCC);
     
-    timer_timeout_add(1000, TIMER_HANDLE(main_led_blink),   TIMER_FUNC_DATA(LED1));
-    timer_timeout_add(500,  TIMER_HANDLE(main_led_blink),   TIMER_FUNC_DATA(LED2));
-    timer_timeout_add(250,  TIMER_HANDLE(main_led_blink),   TIMER_FUNC_DATA(LED3));
-    timer_timeout_add(125,  TIMER_HANDLE(main_led_blink),   TIMER_FUNC_DATA(LED4));
-    timer_timeout_add(100,  TIMER_HANDLE(main_button_read), NULL);
-    timer_timeout_add(100,  TIMER_HANDLE(SetupMode_Write),  NULL);
+    timer_init();
+    timer_timeout_add(1,   TIMER_HANDLE(main_data_rms),    TIMER_FUNC_DATA(&(app.voltage)));
+    timer_timeout_add(1,   TIMER_HANDLE(main_data_rms),    TIMER_FUNC_DATA(&(app.current)));
+    timer_timeout_add(20,  TIMER_HANDLE(main_led_blink),   TIMER_FUNC_DATA(LED1));
+    timer_timeout_add(100, TIMER_HANDLE(main_button_read), NULL);
+    timer_timeout_add(100, TIMER_HANDLE(SetupMode_Write),  NULL);
 
     timer_loop_run();
     
@@ -863,7 +925,6 @@ main(void)
 int main(void)
 {
     //Initial PORT Used
-    main_setup_io();
 
     //Define Output/Input Stream
     stdout = stdin = &uart_str;

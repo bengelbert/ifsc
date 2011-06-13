@@ -1,3 +1,7 @@
+*.DBK
 *.lst
 *.o
 *.map
+*.hex
+*.out
+nbproject
