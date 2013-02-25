@@ -3,6 +3,10 @@
 //|                               Copyright © 2006, Yury V. Reshetov |
 //|                                         http://reshetov.xnet.uz/ |
 //+------------------------------------------------------------------+
+
+#include <stderror.mqh>
+#include <stdlib.mqh>
+
 #property copyright "Copyright © 2006, Yury V. Reshetov ICQ:282715499  http://reshetov.xnet.uz/"
 #property link      "http://reshetov.xnet.uz/"
 //---- input parameters
@@ -13,15 +17,21 @@ extern int    x4 = 93;
 // StopLoss level
 extern double sl = 85;
 extern double risk = 0.05;
-double lots = 1;
 extern int MagicNumber = 888;
-static int prevtime = 0;
+
+static double lots = 1;
+double block = false;
+static double time_block = 0;
 
 //+------------------------------------------------------------------+
 //| expert initialization function                                   |
 //+------------------------------------------------------------------+
 int init()
   {
+    ObjectCreate("label_perceptron", OBJ_LABEL, 0, 0, 0);// Creating obj.
+    ObjectSet("label_perceptron", OBJPROP_CORNER, 0);    // Reference corner
+    ObjectSet("label_perceptron", OBJPROP_XDISTANCE, 10);// X coordinate
+    ObjectSet("label_perceptron", OBJPROP_YDISTANCE, 15);// Y coordinate
 //----
    return(0);
   }
@@ -30,6 +40,8 @@ int init()
 //+------------------------------------------------------------------+
 int deinit()
   {
+    ObjectDelete("linedown");
+    ObjectDelete("lineup");
 //----
    return(0);
   }
@@ -38,9 +50,13 @@ int deinit()
 //+------------------------------------------------------------------+
 int start()
   {
-   if(Time[0] == prevtime) 
-       return(0);
-   prevtime = Time[0];
+    double candle_low = 0;
+    double candle_high = 0;
+    double candle_open = 0;
+    double candle_close = 0;
+    double l_price = 0;
+    double h_price = 0;
+
    int spread = 3;
 
 //----
@@ -51,15 +67,40 @@ int start()
      } 
    else 
      {
-       prevtime = Time[1];
        return(0);
      }
-   int ticket = -1;
-// check for opened position
-   int total = OrdersTotal();   
+     
+    if (time_block != Time[0]) {
+        block = false;
+    }
+    
+    int ticket = -1;
+   
+    candle_low = iLow(Symbol(), Period(), 1);
+    candle_high = iHigh(Symbol(), Period(), 1);
+    candle_open = iOpen(Symbol(), Period(), 1);
+    candle_close = iClose(Symbol(), Period(), 1);
+    
+    l_price = candle_low - spread * Point;// - 0.0001;
+    h_price = candle_high + spread * Point;// + 0.0001;
 
-   lots = NormalizeDouble((AccountBalance() * 0.05) / (sl + spread), 0);
-  
+    ObjectDelete("linedown");
+    ObjectDelete("lineup");
+    ObjectCreate("linedown", OBJ_HLINE, 0, 0, l_price);
+    ObjectCreate("lineup", OBJ_HLINE, 0, 0, h_price);
+    
+    if (perceptron() > 0) {
+        ObjectSet("lineup", OBJPROP_COLOR, Blue);
+        ObjectSet("linedown", OBJPROP_COLOR, Red);
+    } else {
+        ObjectSet("lineup", OBJPROP_COLOR, Red);
+        ObjectSet("linedown", OBJPROP_COLOR, Blue);
+    }    
+    
+   
+// check for opened position
+    int total = OrdersTotal();   
+
 //----
    for(int i = 0; i < total; i++) 
      {
@@ -68,6 +109,8 @@ int start()
        if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber) 
          {
            int prevticket = OrderTicket();
+           block = true;
+           time_block = Time[0];
            
            // long position is opened
            if(OrderType() == OP_BUY) 
@@ -75,15 +118,14 @@ int start()
                // check profit 
                if(Bid > (OrderStopLoss() + (sl * 2  + spread) * Point)) 
                  {               
-                   if(perceptron() < 0) 
+                   if(perceptron() < 0 && (Ask <= l_price)) 
                      { // reverse
+                       RefreshRates();
                        ticket = OrderSend(Symbol(), OP_SELL, lots * 2, Bid, 3, 
                                           Ask + sl * Point, 0, "AI", MagicNumber, 0, Red); 
                        Sleep(30000);
                        //----
-                       if(ticket < 0) 
-                           prevtime = Time[1];
-                       else 
+                       if(ticket >= 0) 
                            OrderCloseBy(ticket, prevticket, Blue);   
                      } 
                    else 
@@ -92,7 +134,6 @@ int start()
                           0, 0, Blue)) 
                          {
                            Sleep(30000);
-                           prevtime = Time[1];
                          }
                      }
                  }  
@@ -103,15 +144,14 @@ int start()
                // check profit 
                if(Ask < (OrderStopLoss() - (sl * 2 + spread) * Point)) 
                  {
-                   if(perceptron() > 0) 
+                   if(perceptron() > 0 && (Bid >= h_price)) 
                      { // reverse
+                       RefreshRates();
                        ticket = OrderSend(Symbol(), OP_BUY, lots * 2, Ask, 3, 
                                           Bid - sl * Point, 0, "AI", MagicNumber, 0, Blue); 
-                       Sleep(30000);
+                       Sleep(5000);
                        //----
-                       if(ticket < 0) 
-                           prevtime = Time[1];
-                       else 
+                       if(ticket >= 0) 
                            OrderCloseBy(ticket, prevticket, Blue);   
                      } 
                    else 
@@ -119,8 +159,7 @@ int start()
                        if(!OrderModify(OrderTicket(), OrderOpenPrice(), Ask + sl * Point, 
                           0, 0, Blue)) 
                          {
-                           Sleep(30000);
-                           prevtime = Time[1];
+                           Sleep(5000);
                          }
                      }
                  }  
@@ -130,27 +169,43 @@ int start()
          }
      }
 // check for long or short position possibility
-   if(perceptron() > 0) 
+   int err;
+    
+    ObjectSetText("label_perceptron", "perceptron(): " + perceptron(), 8, "Arial", White);
+    
+   if((perceptron() > 0) && (Bid >= h_price) && (block == false)) 
      { //long
+       lots = NormalizeDouble((AccountBalance() * risk) / (sl + spread), 2);
+       
+       RefreshRates();
        ticket = OrderSend(Symbol(), OP_BUY, lots, Ask, 3, Bid - sl * Point, 0, "AI", 
                           MagicNumber, 0, Blue); 
        //----
-       if(ticket < 0) 
-         {
-           Sleep(30000);
-           prevtime = Time[1];
-         }
-     } 
-   else 
-     { // short
+        if(ticket < 0) {
+            err=GetLastError();
+            Print("error(",err,"): ",ErrorDescription(err));
+            Sleep(5000);
+        } else {
+            block = true;
+            time_block = Time[0];
+        }
+     } else if ((perceptron() < 0) && (Ask <= l_price) && (block == false)) { 
+        // short
+       lots = NormalizeDouble((AccountBalance() * risk) / (sl + spread), 2);
+       
+       RefreshRates();
        ticket = OrderSend(Symbol(), OP_SELL, lots, Bid, 3, Ask + sl * Point, 0, "AI", 
                           MagicNumber, 0, Red); 
-       if(ticket < 0) 
-         {
-           Sleep(30000);
-           prevtime = Time[1];
-         }
-     }
+        if(ticket < 0) {
+            err=GetLastError();
+            Print("error(",err,"): ",ErrorDescription(err));
+            Sleep(5000);
+        } else {
+            block = true;
+            time_block = Time[0];
+        }
+    }
+     
 //--- exit
    return(0);
   }
