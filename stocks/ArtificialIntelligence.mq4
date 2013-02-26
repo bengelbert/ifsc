@@ -40,6 +40,7 @@ int init()
 //+------------------------------------------------------------------+
 int deinit()
   {
+    ObjectDelete("label_perceptron");
     ObjectDelete("linedown");
     ObjectDelete("lineup");
 //----
@@ -97,7 +98,7 @@ int start()
         ObjectSet("linedown", OBJPROP_COLOR, Blue);
     }    
     
-   
+   ObjectSetText("label_perceptron", "perceptron(): " + perceptron(), 8, "Arial", White);   
 // check for opened position
     int total = OrdersTotal();   
 
@@ -171,7 +172,7 @@ int start()
 // check for long or short position possibility
    int err;
     
-    ObjectSetText("label_perceptron", "perceptron(): " + perceptron(), 8, "Arial", White);
+    
     
    if((perceptron() > 0) && (Bid >= h_price) && (block == false)) 
      { //long
