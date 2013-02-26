@@ -20,8 +20,12 @@ extern double risk = 0.05;
 extern int MagicNumber = 888;
 
 static double lots = 1;
+static int hist_period = PERIOD_M1;
 double block = false;
 static double time_block = 0;
+
+static double max_candle = 0;
+static double min_candle = 999;
 
 //+------------------------------------------------------------------+
 //| expert initialization function                                   |
@@ -32,6 +36,13 @@ int init()
     ObjectSet("label_perceptron", OBJPROP_CORNER, 0);    // Reference corner
     ObjectSet("label_perceptron", OBJPROP_XDISTANCE, 10);// X coordinate
     ObjectSet("label_perceptron", OBJPROP_YDISTANCE, 15);// Y coordinate
+    
+    ObjectCreate("label_perceptron2", OBJ_LABEL, 0, 0, 0);// Creating obj.
+    ObjectSet("label_perceptron2", OBJPROP_CORNER, 0);    // Reference corner
+    ObjectSet("label_perceptron2", OBJPROP_XDISTANCE, 10);// X coordinate
+    ObjectSet("label_perceptron2", OBJPROP_YDISTANCE, 30);// Y coordinate
+    max_candle = 0;
+    min_candle = 999;
 //----
    return(0);
   }
@@ -51,12 +62,18 @@ int deinit()
 //+------------------------------------------------------------------+
 int start()
   {
+    int j ;
+    double med_shadow_max = 0;
+    double med_shadow_min = 0;
+    double close = 0;
+    double open = 0;
     double candle_low = 0;
     double candle_high = 0;
     double candle_open = 0;
     double candle_close = 0;
     double l_price = 0;
     double h_price = 0;
+    double med_volume = 0;
 
    int spread = 3;
 
@@ -71,19 +88,75 @@ int start()
        return(0);
      }
      
-    if (time_block != Time[0]) {
+    if (time_block != iTime(Symbol(), hist_period, 0)) {
         block = false;
     }
     
     int ticket = -1;
-   
-    candle_low = iLow(Symbol(), Period(), 1);
-    candle_high = iHigh(Symbol(), Period(), 1);
-    candle_open = iOpen(Symbol(), Period(), 1);
-    candle_close = iClose(Symbol(), Period(), 1);
+
     
-    l_price = candle_low - spread * Point;// - 0.0001;
-    h_price = candle_high + spread * Point;// + 0.0001;
+   
+   //media da sombra maxima   
+    med_shadow_max = 0;
+    for (j = 1; j <= 21; j++) {
+      close = iClose(Symbol(), hist_period, j);
+      open = iOpen(Symbol(), hist_period, j);
+      
+      if (close > open) {
+         med_shadow_max += iHigh(Symbol(), hist_period, j) - close;
+      } else {
+         med_shadow_max += iHigh(Symbol(), hist_period, j) - open;
+      }
+    }
+    
+    med_shadow_max /= 21;
+    med_shadow_max = NormalizeDouble(med_shadow_max*2, 5);
+
+   //media da sombra minima
+    med_shadow_min = 0;
+    for (j = 1; j <= 21; j++) {
+      close = iClose(Symbol(), hist_period, j);
+      open = iOpen(Symbol(), hist_period, j);
+      
+      if (close > open) {
+         med_shadow_min += open - iLow(Symbol(), hist_period, j);
+      } else {
+         med_shadow_min += close - iLow(Symbol(), hist_period, j);
+      }
+    }
+    
+    med_shadow_min /= 21;
+    med_shadow_min = NormalizeDouble(med_shadow_min*2, 5);
+
+   //media do volume
+    med_volume = 0;
+    for (j = 1; j <= 21; j++) {
+      med_volume += iVolume(Symbol(), hist_period, j);
+    }
+    
+    med_volume /= 21;
+    med_volume = NormalizeDouble(med_volume, 5);
+
+    
+    ObjectSetText("label_perceptron", "p(): " + perceptron() + 
+                  " Per: " + hist_period + 
+                  " Max: " + med_shadow_max + 
+                  " Min: " + med_shadow_min, 8, "Arial", White);
+                  
+    ObjectSetText("label_perceptron2", "Vol: " + med_volume + 
+                  " MaxCdl: " + max_candle +
+                  " MinCdl: " + min_candle, 8, "Arial", White);
+
+    candle_low = iLow(Symbol(), hist_period, 1);
+    candle_high = iHigh(Symbol(), hist_period, 1);
+    candle_open = iOpen(Symbol(), hist_period, 1);
+    candle_close = iClose(Symbol(), hist_period, 1);
+
+    //l_price = candle_low - spread * Point;// - 0.0001;
+    //h_price = candle_high + spread * Point;// + 0.0001;
+
+    l_price = candle_low - med_shadow_min;// - 0.0001;
+    h_price = candle_high + med_shadow_max;// + 0.0001;
 
     ObjectDelete("linedown");
     ObjectDelete("lineup");
@@ -97,8 +170,7 @@ int start()
         ObjectSet("lineup", OBJPROP_COLOR, Red);
         ObjectSet("linedown", OBJPROP_COLOR, Blue);
     }    
-    
-   ObjectSetText("label_perceptron", "perceptron(): " + perceptron(), 8, "Arial", White);   
+       
 // check for opened position
     int total = OrdersTotal();   
 
@@ -111,7 +183,7 @@ int start()
          {
            int prevticket = OrderTicket();
            block = true;
-           time_block = Time[0];
+           time_block = iTime(Symbol(), hist_period, 0);
            
            // long position is opened
            if(OrderType() == OP_BUY) 
@@ -124,18 +196,25 @@ int start()
                        RefreshRates();
                        ticket = OrderSend(Symbol(), OP_SELL, lots * 2, Bid, 3, 
                                           Ask + sl * Point, 0, "AI", MagicNumber, 0, Red); 
-                       Sleep(30000);
+                       Sleep(5000);
                        //----
                        if(ticket >= 0) 
                            OrderCloseBy(ticket, prevticket, Blue);   
-                     } 
-                   else 
-                     { // trailing stop
+                     } else { // trailing stop
                        if(!OrderModify(OrderTicket(), OrderOpenPrice(), Bid - sl * Point, 
                           0, 0, Blue)) 
                          {
-                           Sleep(30000);
+                           Sleep(5000);
+                         } else {
+                           period_change_down();
                          }
+                     }
+                 } else if (is_high_close_candle()) { 
+                    RefreshRates();
+                    if(!OrderModify(OrderTicket(), OrderOpenPrice(), candle_low - (med_shadow_min * 2), 
+                      0, 0, Blue)) 
+                     {
+                       Sleep(5000);
                      }
                  }  
                // short position is opened
@@ -157,11 +236,21 @@ int start()
                      } 
                    else 
                      { // trailing stop
+  
                        if(!OrderModify(OrderTicket(), OrderOpenPrice(), Ask + sl * Point, 
                           0, 0, Blue)) 
                          {
                            Sleep(5000);
+                         } else {
+                           period_change_down();
                          }
+                     }
+                  } else if (is_low_close_candle()) { 
+                     RefreshRates();
+                     if(!OrderModify(OrderTicket(), OrderOpenPrice(), candle_high + (med_shadow_max * 2), 
+                       0, 0, Blue)) 
+                     {
+                        Sleep(5000);
                      }
                  }  
              }
@@ -173,8 +262,7 @@ int start()
    int err;
     
     
-    
-   if((perceptron() > 0) && (Bid >= h_price) && (block == false)) 
+   if((perceptron() > 0) && (Bid >= h_price) && (block == false) && (iVolume(Symbol(), hist_period, 0) >= med_volume)) 
      { //long
        lots = NormalizeDouble((AccountBalance() * risk) / (sl + spread), 2);
        
@@ -188,9 +276,12 @@ int start()
             Sleep(5000);
         } else {
             block = true;
-            time_block = Time[0];
+            time_block = iTime(Symbol(), hist_period, 0);
+            period_change_up();
+            max_candle = candle_high;
         }
-     } else if ((perceptron() < 0) && (Ask <= l_price) && (block == false)) { 
+        
+     } else if ((perceptron() < 0) && (Ask <= l_price) && (block == false) && (iVolume(Symbol(), hist_period, 0) >= med_volume)) { 
         // short
        lots = NormalizeDouble((AccountBalance() * risk) / (sl + spread), 2);
        
@@ -203,7 +294,9 @@ int start()
             Sleep(5000);
         } else {
             block = true;
-            time_block = Time[0];
+            time_block = iTime(Symbol(), hist_period, 0);
+            period_change_up();
+            min_candle = candle_low;
         }
     }
      
@@ -219,12 +312,84 @@ double perceptron()
    double w2 = x2 - 100;
    double w3 = x3 - 100;
    double w4 = x4 - 100;
-   double a1 = iAC(Symbol(), 0, 0);
-   double a2 = iAC(Symbol(), 0, 7);
-   double a3 = iAC(Symbol(), 0, 14);
-   double a4 = iAC(Symbol(), 0, 21);
+   double a1 = iAC(Symbol(), hist_period, 0);
+   double a2 = iAC(Symbol(), hist_period, 7);
+   double a3 = iAC(Symbol(), hist_period, 14);
+   double a4 = iAC(Symbol(), hist_period, 21);
    return(w1 * a1 + w2 * a2 + w3 * a3 + w4 * a4);
   }
 //+------------------------------------------------------------------+
 
+void period_change_up()
+{
+   if (hist_period == PERIOD_M1) {
+      hist_period = PERIOD_M5;
+   } else if (hist_period == PERIOD_M5) {
+         hist_period = PERIOD_M15;
+   } else if (hist_period == PERIOD_M15) {
+      hist_period = PERIOD_M30;
+   } else if (hist_period == PERIOD_M30) {
+      hist_period = PERIOD_H1;
+   } else if (hist_period == PERIOD_H1) {
+      hist_period = PERIOD_H4;
+   } else {
+      hist_period = PERIOD_D1;
+   }
+}
 
+void period_change_down()
+{
+   if (hist_period == PERIOD_D1) {
+      hist_period = PERIOD_H4;
+   } else if (hist_period == PERIOD_H4) {
+         hist_period = PERIOD_H1;
+   } else if (hist_period == PERIOD_H1) {
+      hist_period = PERIOD_M30;
+   } else if (hist_period == PERIOD_M30) {
+      hist_period = PERIOD_M15;
+   } else if (hist_period == PERIOD_M15) {
+      hist_period = PERIOD_M5;
+   } else {
+      hist_period = PERIOD_M1;
+   }
+}
+
+bool is_high_close_candle()
+{
+    bool ret = false;
+
+    double candle_open = 0;
+    double candle_close = 0;
+    double candle_high = 0;
+    
+    candle_open = iOpen(Symbol(), hist_period, 1);
+    candle_close = iClose(Symbol(), hist_period, 1);
+    candle_high = iHigh(Symbol(), hist_period, 1);
+    
+    if (candle_close > candle_open && candle_close > max_candle) {
+        ret = true;
+        max_candle = candle_high;       
+    }
+    
+    return (ret);
+}
+
+bool is_low_close_candle()
+{
+    bool ret = false;
+
+    double candle_open = 0;
+    double candle_close = 0;
+    double candle_low = 0;
+
+    candle_open = iOpen(Symbol(), hist_period, 1);
+    candle_close = iClose(Symbol(), hist_period, 1);
+    candle_low = iLow(Symbol(), hist_period, 1);
+    
+    if (candle_close < candle_open && candle_close < min_candle) {
+        ret = true;
+        min_candle = candle_low;
+    }
+    
+    return (ret);
+}
