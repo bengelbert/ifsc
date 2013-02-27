@@ -20,9 +20,9 @@ extern double tradeRisk = 0.0165;
 extern int MagicNumber = 888;
 
 static double tradeLots = 1;
-static int decisionPeriod = PERIOD_M1;
+static int decisionPeriod = PERIOD_M30;
 
-static int tradePeriod = PERIOD_M1;
+static int tradePeriod = PERIOD_M30;
 static double tradeBlock = false;
 static double tradeBlockTime = 0;
 
@@ -109,9 +109,9 @@ int start()
                   8, "Arial", White);
                   
     ObjectSetText("label_perceptron2",
-                  "decisionP(" + decisionPeriod + "): " + DoubleToStr(perceptron(decisionPeriod), 5) + 
-                  " decisionVol(" + decisionPeriod + "): " + DoubleToStr(iVolume(Symbol(), decisionPeriod, 1), 0) + 
-                  " decisionVolMed: " + DoubleToStr(decisionVolMed, 0), 
+                  "decP(" + decisionPeriod + "): " + DoubleToStr(perceptron(decisionPeriod), 5) + 
+                  " decVol(" + decisionPeriod + "): " + DoubleToStr(iVolume(Symbol(), decisionPeriod, 1), 0) + 
+                  " decVolMed: " + DoubleToStr(decisionVolMed, 0), 
                   8, "Arial", White);
 
 // check for opened position
