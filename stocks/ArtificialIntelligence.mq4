@@ -115,6 +115,7 @@ int start()
                   8, "Arial", White);
 
 // check for opened position
+    Print("" + tradeStopLoss * getMultiplier());
     int total = OrdersTotal();   
     double newStop = 0;
 //----
@@ -179,7 +180,7 @@ int start()
        if (tradeLots < 0.01) tradeLots = 0.01;
        
        RefreshRates();
-       ticket = OrderSend(Symbol(), OP_BUY, tradeLots, Ask, 3, Bid - tradeStopLoss * Point, 0, "AI", 
+       ticket = OrderSend(Symbol(), OP_BUY, tradeLots, Ask, 3, Bid - tradeStopLoss * getMultiplier() * Point, 0, "AI", 
                           MagicNumber, 0, Blue); 
        //----
         if(ticket < 0) {
@@ -201,7 +202,7 @@ int start()
        if (tradeLots < 0.01) tradeLots = 0.01;
        
        RefreshRates();
-       ticket = OrderSend(Symbol(), OP_SELL, tradeLots, Bid, 3, Ask + tradeStopLoss * Point, 0, "AI", 
+       ticket = OrderSend(Symbol(), OP_SELL, tradeLots, Bid, 3, Ask + tradeStopLoss * getMultiplier() * Point, 0, "AI", 
                           MagicNumber, 0, Red); 
         if(ticket < 0) {
             err=GetLastError();
