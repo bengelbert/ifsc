@@ -124,7 +124,7 @@ int start()
         if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber) {
             prevticket = OrderTicket();
             tradeBlock = true;
-            tradeBlockTime = iTime(Symbol(), decisionPeriod, 0);
+            tradeBlockTime = iTime(Symbol(), tradePeriod, 0);
            
             // long position is opened
             if(OrderType() == OP_BUY) {
