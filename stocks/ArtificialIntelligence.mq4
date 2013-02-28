@@ -21,14 +21,12 @@ extern int MagicNumber = 888;
 
 static double tradeLots = 1;
 
-static int decisionPeriod = PERIOD_M30;
+extern int decisionPeriod = PERIOD_H1;
 static double decisionVolMed = 0;
 
 static double optVolMed = 0;
 
-static int tradePeriod = PERIOD_M30;
-static double tradeBlock = false;
-static double tradeBlockTime = 0;
+extern int tradePeriod = PERIOD_H1;
 
 static int prevticket;
 
@@ -53,7 +51,7 @@ int init()
     ObjectSet("label_perceptron3", OBJPROP_XDISTANCE, 10);// X coordinate
     ObjectSet("label_perceptron3", OBJPROP_YDISTANCE, 45);// Y coordinate
 
-    getTradePeriod();
+    //getTradePeriod();
 //----
    return(0);
   }
@@ -75,6 +73,10 @@ int start()
     int err;
     int spread = 3;
     string str_trade = "";
+    double candleLow = 0;
+    double candleLowPrev = 0;
+    double candleHigh = 0;
+    double candleHighPrev = 0;
 
 //----
     if(IsTradeAllowed()) {
@@ -84,10 +86,6 @@ int start()
        return(0);
     }
      
-    if (tradeBlockTime != iTime(Symbol(), decisionPeriod, 0)) {
-        tradeBlock = false;
-    }
-    
     int ticket = -1;
    
    //media do volume
@@ -110,17 +108,13 @@ int start()
     optVolMed *= 0.95;
     optVolMed = NormalizeDouble(optVolMed, 5);
     
-    ObjectSetText("label_perceptron", 
-                  "tradeP(" + tradePeriod + "): " + DoubleToStr(perceptron(tradePeriod), 5),
-                  8, "Arial", White);
-                  
-    ObjectSetText("label_perceptron2",
+    ObjectSetText("label_perceptron",
                   "optP(" + getOptPeriod() + "): " + DoubleToStr(perceptron(getOptPeriod()), 5) + 
                   " optVol(" + getOptPeriod() + "): " + DoubleToStr(iVolume(Symbol(), getOptPeriod(), 0), 0) + 
                   " optVolMed: " + DoubleToStr(optVolMed, 0), 
                   8, "Arial", White);
 
-    ObjectSetText("label_perceptron3",
+    ObjectSetText("label_perceptron2",
                   "decP(" + decisionPeriod + "): " + DoubleToStr(perceptron(decisionPeriod), 5) + 
                   " decVol(" + decisionPeriod + "): " + DoubleToStr(iVolume(Symbol(), decisionPeriod, 0), 0) + 
                   " decVolMed: " + DoubleToStr(decisionVolMed, 0), 
@@ -134,13 +128,16 @@ int start()
         OrderSelect(i, SELECT_BY_POS, MODE_TRADES); 
         // check for symbol & magic number
         if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber) {
-            prevticket = OrderTicket();
-            tradeBlock = true;
-            tradeBlockTime = iTime(Symbol(), tradePeriod, 0);
            
             // long position is opened
             if(OrderType() == OP_BUY) {
                 // check profit 
+                ObjectSetText("label_perceptron3", 
+                              "tradeP(" + tradePeriod + "): " + DoubleToStr(perceptron(tradePeriod), 5) +
+                              " tradeProt: " + DoubleToStr((tradeStopLoss * getMultiplier(tradePeriod) * 2  + spread), 0) +
+                              " tradeToProt: " + DoubleToStr((Bid - OrderStopLoss()) / Point, 0),
+                              8, "Arial", White);
+                
                 if(Bid > (OrderStopLoss() + (tradeStopLoss * getMultiplier(tradePeriod) * 2  + spread) * Point)) {               
                     
                     RefreshRates();
@@ -155,11 +152,36 @@ int start()
                         Sleep(10000);
                     } else {
                         period_change_down();
-                        tradeBlockTime = iTime(Symbol(), decisionPeriod, 0);
                     }
-                }  
+                } else if ((perceptron(tradePeriod) < 0) && (perceptron(decisionPeriod) < 0)) {
+                    
+                    candleLow = iLow(Symbol(), decisionPeriod, 0);
+                    candleLowPrev = iLow(Symbol(), decisionPeriod, 1);
+                    
+                    if (candleLowPrev <= candleLow) {
+                        newStop = candleLowPrev - spread * Point;
+                    } else {
+                        newStop = candleLow - spread * Point;
+                    }
+                                    
+                    if (newStop > OrderStopLoss()) {          
+                        if(!OrderModify(OrderTicket(), OrderOpenPrice(), newStop, 
+                                        0, 0, Blue)) {
+                            Sleep(10000);
+                        } else {
+                            Print("SL by (tradeP and decP) < 0");
+                        }
+                    }
+                }
+
                 // short position is opened
             } else {
+                ObjectSetText("label_perceptron3", 
+                              "tradeP(" + tradePeriod + "): " + DoubleToStr(perceptron(tradePeriod), 5) +
+                              " tradeProt: " + DoubleToStr((tradeStopLoss * getMultiplier(tradePeriod) * 2  + spread), 0) +
+                              " tradeToProt: " + DoubleToStr((OrderStopLoss() - Ask) / Point, 0),
+                              8, "Arial", White);
+
                 // check profit 
                 if(Ask < (OrderStopLoss() - (tradeStopLoss * getMultiplier(tradePeriod) * 2 + spread) * Point)) {
                    
@@ -169,13 +191,35 @@ int start()
                     } else {
                         newStop = Ask + tradeStopLoss * getMultiplier(tradePeriod) * Point;
                     }
+                    
+                    Print("newStop: " + newStop);
                    
                     if(!OrderModify(OrderTicket(), OrderOpenPrice(), newStop, 
                                     0, 0, Blue)) {
                         Sleep(10000);
                     } else {
                         period_change_down();
-                        tradeBlockTime = iTime(Symbol(), decisionPeriod, 0);
+                    }
+                } else if ((perceptron(tradePeriod) > 0) && (perceptron(decisionPeriod) > 0)) {
+
+                    candleHigh = iHigh(Symbol(), decisionPeriod, 0);
+                    candleHighPrev = iHigh(Symbol(), decisionPeriod, 1);
+                    
+                    if (candleHighPrev >= candleHigh) {
+                        newStop = candleHighPrev + spread * 2 * Point;
+                    } else {
+                        newStop = candleHigh + spread * 2 * Point;
+                    }
+                    
+                    if (newStop < OrderStopLoss()) {          
+                        if(!OrderModify(OrderTicket(), OrderOpenPrice(), newStop, 
+                                        0, 0, Blue)) {
+                            err=GetLastError();
+                            Print("error(",err,"): ",ErrorDescription(err));
+                            Sleep(10000);
+                        } else {
+                            Print("SL by (tradeP and decP) < 0");
+                        }
                     }
                 }  
             }
@@ -193,7 +237,7 @@ int start()
        RefreshRates();
        ticket = OrderSend(Symbol(), OP_BUY, tradeLots, Ask, 3, 
                           Bid - tradeStopLoss * getMultiplier(tradePeriod) * Point, 0, 
-                          "tradePeriod(" + tradePeriod + ") decisionPeriod(" + decisionPeriod + ")", 
+                          "tradePer(" + tradePeriod + ") decPer(" + decisionPeriod + ")", 
                           MagicNumber, 0, Blue); 
        //----
         if(ticket < 0) {
@@ -201,8 +245,6 @@ int start()
             Print("error(",err,"): ",ErrorDescription(err));
             Sleep(10000);
         } else {
-            tradeBlock = true;
-            tradeBlockTime = iTime(Symbol(), tradePeriod, 0);
             period_change_up();
         }
 
@@ -216,15 +258,13 @@ int start()
        RefreshRates();
        ticket = OrderSend(Symbol(), OP_SELL, tradeLots, Bid, 3, 
                           Ask + tradeStopLoss * getMultiplier(tradePeriod) * Point, 0, 
-                          "tradePeriod(" + tradePeriod + ") decisionPeriod(" + decisionPeriod + ")", 
+                          "tradePer(" + tradePeriod + ") decPer(" + decisionPeriod + ")", 
                           MagicNumber, 0, Red); 
         if(ticket < 0) {
             err=GetLastError();
             Print("error(",err,"): ",ErrorDescription(err));
             Sleep(10000);
         } else {
-            tradeBlock = true;
-            tradeBlockTime = iTime(Symbol(), tradePeriod, 0);
             period_change_up();
         }
     }
@@ -261,14 +301,24 @@ void period_change_up()
       decisionPeriod = PERIOD_H1;
    } else if (decisionPeriod == PERIOD_H1) {
       decisionPeriod = PERIOD_H4;
-   } else {
+   } else if (decisionPeriod == PERIOD_H4) {
       decisionPeriod = PERIOD_D1;
+   } else if (decisionPeriod == PERIOD_D1) {
+      decisionPeriod = PERIOD_W1;
+   } else if (decisionPeriod == PERIOD_W1) {
+      decisionPeriod = PERIOD_MN1;
+   } else {
+      decisionPeriod = PERIOD_H1;
    }
 }
 
 void period_change_down()
 {
-   if (decisionPeriod == PERIOD_D1) {
+   if (decisionPeriod == PERIOD_MN1) {
+      decisionPeriod = PERIOD_W1;
+   } else if (decisionPeriod == PERIOD_W1) {
+      decisionPeriod = PERIOD_D1;
+   } else if (decisionPeriod == PERIOD_D1) {
       decisionPeriod = PERIOD_H4;
    } else if (decisionPeriod == PERIOD_H4) {
       decisionPeriod = PERIOD_H1;
@@ -278,8 +328,10 @@ void period_change_down()
       decisionPeriod = PERIOD_M15;
    } else if (decisionPeriod == PERIOD_M15) {
       decisionPeriod = PERIOD_M5;
-   } else {
+   } else if (decisionPeriod == PERIOD_M5) {
       decisionPeriod = PERIOD_M1;
+   } else {
+      decisionPeriod = PERIOD_H1;
    }
 }
 
@@ -299,8 +351,14 @@ double getMultiplier(int per)
         ret = 3.0;
     } else if (per == PERIOD_H4) {
         ret = 3.5;
-    } else {
+    } else if (per == PERIOD_D1) {
         ret = 4.0;
+    } else if (per == PERIOD_W1) {
+        ret = 4.5;
+    } else if (per == PERIOD_MN1) {
+        ret = 5.0;
+    } else {
+        ret = 3.0;
     }
    
    return (ret);
@@ -312,14 +370,12 @@ bool isLong()
     
     if ((perceptron(decisionPeriod) > 0) && 
         (perceptron(getOptPeriod()) > 0) && 
-        (tradeBlock == false) && 
         (iVolume(Symbol(), getOptPeriod(), 0) >= optVolMed)) {
     
         tradePeriod = getOptPeriod();
         ret = true;        
     
     } else if ((perceptron(decisionPeriod) > 0) && 
-        (tradeBlock == false) && 
         (iVolume(Symbol(), decisionPeriod, 0) >= decisionVolMed)) {
         
         tradePeriod = decisionPeriod;
@@ -335,14 +391,12 @@ bool isShort()
     
     if ((perceptron(decisionPeriod) < 0) && 
         (perceptron(getOptPeriod()) < 0) && 
-        (tradeBlock == false) && 
         (iVolume(Symbol(), getOptPeriod(), 0) >= optVolMed)) {
         
         tradePeriod = getOptPeriod();
         ret = true;        
         
     } else if ((perceptron(decisionPeriod) < 0) && 
-        (tradeBlock == false) && 
         (iVolume(Symbol(), decisionPeriod, 0) >= decisionVolMed)) {
         
         tradePeriod = decisionPeriod;
@@ -354,9 +408,13 @@ bool isShort()
 
 int getOptPeriod()
 {
-    int ret = PERIOD_M15;
+    int ret = PERIOD_M30;
     
-    if (decisionPeriod == PERIOD_D1) {
+    if (decisionPeriod == PERIOD_MN1) {
+        ret = PERIOD_W1;
+    } else if (decisionPeriod == PERIOD_W1) {
+        ret = PERIOD_D1;
+    } else if (decisionPeriod == PERIOD_D1) {
         ret = PERIOD_H4;
     } else if (decisionPeriod == PERIOD_H4) {
         ret = PERIOD_H1;
@@ -366,51 +424,13 @@ int getOptPeriod()
         ret = PERIOD_M15;
     } else if (decisionPeriod == PERIOD_M15) {
         ret = PERIOD_M5;
-    } else {
+    } else if (decisionPeriod == PERIOD_M5) {
         ret = PERIOD_M1;
+    } else {
+        ret = PERIOD_M30;
     }
 
     return (ret);
 }
 
-int getTradePeriod()
-{
-    int spread = 0;
-    int stop;
-    int total = OrdersTotal();   
-    
-    spread = MarketInfo(Symbol(), MODE_SPREAD);
-//----
-    for(int i = 0; i < total; i++) {
-        OrderSelect(i, SELECT_BY_POS, MODE_TRADES); 
-        // check for symbol & magic number
-        if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber) {
-            if(OrderType() == OP_BUY) {
-                stop = (OrderOpenPrice() - OrderStopLoss()) / Point;
-            } else if (OrderType() == OP_SELL) {
-                stop = (OrderStopLoss() - OrderOpenPrice()) / Point;
-            }
-            
-            if (stop <= (tradeStopLoss * getMultiplier(PERIOD_M1) + spread)) {
-                tradePeriod = PERIOD_M1;            
-            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_M5) + spread)) {
-                tradePeriod = PERIOD_M5;            
-            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_M15) + spread)) {
-                tradePeriod = PERIOD_M15;            
-            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_M30) + spread)) {
-                tradePeriod = PERIOD_M30;            
-            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_H1) + spread)) {
-                tradePeriod = PERIOD_H1;            
-            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_H4) + spread)) {
-                tradePeriod = PERIOD_H4;            
-            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_D1) + spread)) {
-                tradePeriod = PERIOD_D1;            
-            } else {
-                tradePeriod = PERIOD_M30;            
-            }
-            
-            break;
-        }
-    }
 
-}
