@@ -16,7 +16,7 @@ extern int    x3 = 16;
 extern int    x4 = 93;
 // StopLoss level
 extern double tradeStopLoss = 85;
-extern double tradeRisk = 0.0165;
+extern double tradeRisk = 0.02;
 extern int MagicNumber = 888;
 
 static double tradeLots = 1;
@@ -53,6 +53,7 @@ int init()
     ObjectSet("label_perceptron3", OBJPROP_XDISTANCE, 10);// X coordinate
     ObjectSet("label_perceptron3", OBJPROP_YDISTANCE, 45);// Y coordinate
 
+    getTradePeriod();
 //----
    return(0);
   }
@@ -370,4 +371,46 @@ int getOptPeriod()
     }
 
     return (ret);
+}
+
+int getTradePeriod()
+{
+    int spread = 0;
+    int stop;
+    int total = OrdersTotal();   
+    
+    spread = MarketInfo(Symbol(), MODE_SPREAD);
+//----
+    for(int i = 0; i < total; i++) {
+        OrderSelect(i, SELECT_BY_POS, MODE_TRADES); 
+        // check for symbol & magic number
+        if(OrderSymbol() == Symbol() && OrderMagicNumber() == MagicNumber) {
+            if(OrderType() == OP_BUY) {
+                stop = (OrderOpenPrice() - OrderStopLoss()) / Point;
+            } else if (OrderType() == OP_SELL) {
+                stop = (OrderStopLoss() - OrderOpenPrice()) / Point;
+            }
+            
+            if (stop <= (tradeStopLoss * getMultiplier(PERIOD_M1) + spread)) {
+                tradePeriod = PERIOD_M1;            
+            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_M5) + spread)) {
+                tradePeriod = PERIOD_M5;            
+            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_M15) + spread)) {
+                tradePeriod = PERIOD_M15;            
+            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_M30) + spread)) {
+                tradePeriod = PERIOD_M30;            
+            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_H1) + spread)) {
+                tradePeriod = PERIOD_H1;            
+            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_H4) + spread)) {
+                tradePeriod = PERIOD_H4;            
+            } else if (stop <= (tradeStopLoss * getMultiplier(PERIOD_D1) + spread)) {
+                tradePeriod = PERIOD_D1;            
+            } else {
+                tradePeriod = PERIOD_M30;            
+            }
+            
+            break;
+        }
+    }
+
 }
