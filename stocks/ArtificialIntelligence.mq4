@@ -27,6 +27,7 @@ static double decisionVolMed = 0;
 static double optVolMed = 0;
 
 extern int tradePeriod = PERIOD_H1;
+extern int tradeStopPeriod = PERIOD_H1;
 
 static int prevticket;
 
@@ -153,7 +154,7 @@ int start()
                     } else {
                         period_change_down();
                     }
-                } else if ((perceptron(tradePeriod) < 0) && (perceptron(decisionPeriod) < 0)) {
+                } else if ((perceptron(tradePeriod) < 0) && (perceptron(tradeStopPeriod) < 0)) {
                     
                     candleLow = iLow(Symbol(), decisionPeriod, 0);
                     candleLowPrev = iLow(Symbol(), decisionPeriod, 1);
@@ -200,7 +201,7 @@ int start()
                     } else {
                         period_change_down();
                     }
-                } else if ((perceptron(tradePeriod) > 0) && (perceptron(decisionPeriod) > 0)) {
+                } else if ((perceptron(tradePeriod) > 0) && (perceptron(tradeStopPeriod) > 0)) {
 
                     candleHigh = iHigh(Symbol(), decisionPeriod, 0);
                     candleHighPrev = iHigh(Symbol(), decisionPeriod, 1);
@@ -381,6 +382,8 @@ bool isLong()
         tradePeriod = decisionPeriod;
         ret = true;        
     }
+
+    tradeStopPeriod = decisionPeriod;
     
     return (ret);
 }
@@ -402,6 +405,8 @@ bool isShort()
         tradePeriod = decisionPeriod;
         ret = true;        
     }
+    
+    tradeStopPeriod = decisionPeriod;
     
     return (ret);
 }
