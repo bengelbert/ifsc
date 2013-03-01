@@ -237,7 +237,7 @@ int start()
        RefreshRates();
        ticket = OrderSend(Symbol(), OP_BUY, tradeLots, Ask, 3, 
                           Bid - tradeStopLoss * getMultiplier(tradePeriod) * Point, 0, 
-                          "tradePer(" + tradePeriod + ") decPer(" + getNextPeriod(tradePeriod) + ")", 
+                          "tradePer(" + tradePeriod + ") decPer(" + getNextPeriod(decisionPeriod) + ")", 
                           MagicNumber, 0, Blue); 
        //----
         if(ticket < 0) {
@@ -258,7 +258,7 @@ int start()
        RefreshRates();
        ticket = OrderSend(Symbol(), OP_SELL, tradeLots, Bid, 3, 
                           Ask + tradeStopLoss * getMultiplier(tradePeriod) * Point, 0, 
-                          "tradePer(" + tradePeriod + ") decPer(" + getNextPeriod(tradePeriod) + ")", 
+                          "tradePer(" + tradePeriod + ") decPer(" + getNextPeriod(decisionPeriod) + ")", 
                           MagicNumber, 0, Red); 
         if(ticket < 0) {
             err=GetLastError();
