@@ -679,7 +679,7 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
             zzPerda[index] = zzLots[index] * ((zzStart[index] - zzStop[index]) / Point - spread);
         }
         
-        if (zzLots[index] == 0.01 && zzPerda[index] < -1.5) {
+        if (zzLots[index] == 0.01 && (-zzPerda[index]) > AccountBalance()*0.03) {
             zzLots[index] = 0;
             zzRiskGain[index] = -99;
         }
