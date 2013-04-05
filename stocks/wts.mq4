@@ -31,7 +31,7 @@ static double zzTopTimeFrame[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zzTopBottomCount[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zzState[MAX_PERIOD] = {ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF};
 static double zzMedShadow[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
-static double zzRisk[MAX_PERIOD] = {0.25,0.20,0.15,0.10,0.05,0.01,0.01,0.01,0.01};
+static double zzRisk[MAX_PERIOD] = {0.16,0.08,0.04,0.02,0.01,0.01,0.01,0.01,0.01};
 static double zzPerna[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zz33Start[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zz50Start[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
@@ -387,10 +387,10 @@ double getRisk(int index)
         case ST_UNDEF: risk = 0; break;
         case ST_CONG: risk = zzRisk[index]; break;
         //case ST_NORISK: risk = zzRisk[index]; break;
-        case ST_UP: med = zzMedShadow[index]; break;
-        case ST_DOWN: med = zzMedShadow[index]; break;
+        case ST_UP: risk = zzRisk[index]; break;
+        case ST_DOWN: risk = zzRisk[index]; break;
     }
-    
+/*    
     if (zzState[index] == ST_UP || zzState[index] == ST_DOWN) {
         if (med > spread * 8) {
             risk = 0.16;    
@@ -404,7 +404,7 @@ double getRisk(int index)
             risk = 0.01;
         } 
     }
-    
+*/    
     return (risk);
 }
 
@@ -632,15 +632,12 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
     }
     
     if (index > 0 && zzStart[index] != 0) {
-        if ((zzState[index] == ST_UP && zzState[index-1] == ST_UP) ||
-            (zzState[index] == ST_DOWN && zzState[index-1] == ST_DOWN)) {
-            zzTakeProfit[index] = zzTakeProfit[index-1];
-        } else if ((zzState[index] == ST_UP && zzState[index-1] == ST_DOWN) ||
-                   (zzState[index] == ST_DOWN && zzState[index-1] == ST_UP)) {
+        if ((zzState[index] == ST_UP && zzState[index-1] == ST_DOWN) ||
+            (zzState[index] == ST_DOWN && zzState[index-1] == ST_UP)) {
             zzTakeProfit[index] = zzStart[index-1];                 
-        } else if ((zzState[index] == ST_UP && (zzState[index-1] == ST_CONG || zzState[index-1] == ST_UNDEF))) {
+        } else if ((zzState[index] == ST_UP && (zzState[index-1] == ST_UP || zzState[index-1] == ST_CONG || zzState[index-1] == ST_UNDEF))) {
             zzTakeProfit[index] = zzTop[index-1] - zzMedShadow[index-1]*Point;
-        } else if ((zzState[index] == ST_DOWN && (zzState[index-1] == ST_CONG || zzState[index-1] == ST_UNDEF))) {
+        } else if ((zzState[index] == ST_DOWN && (zzState[index-1] == ST_DOWN || zzState[index-1] == ST_CONG || zzState[index-1] == ST_UNDEF))) {
             zzTakeProfit[index] = zzBottom[index-1] + zzMedShadow[index-1]*Point;
         }
     }
@@ -954,7 +951,7 @@ void checkOrders()
                         Sleep(10000);
                     }
                 } else if ((zzPercorrido[getIndexByPeriod(period)] >= 0.80) && (iLow(Symbol(), period, 1) - zzMedShadow[getIndexByPeriod(period)] * Point) > stopLoss) {
-                    if (!OrderModify(ticket, price, iLow(Symbol(), period, 1) - zzMedShadow[getIndexByPeriod(period)] * Point, takeProfit, 0, Blue)) {
+                    if (!OrderModify(ticket, price, iLow(Symbol(), period, 1) - (zzMedShadow[getIndexByPeriod(period)] + spread) * Point, takeProfit, 0, Blue)) {
                         Sleep(10000);
                     }
                 }
