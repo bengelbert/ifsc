@@ -678,6 +678,11 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
             zzLucro[index] = zzLots[index] * ((zzStart[index] - zzTakeProfit[index]) / Point - spread);
             zzPerda[index] = zzLots[index] * ((zzStart[index] - zzStop[index]) / Point - spread);
         }
+        
+        if (zzLots[index] == 0.01 && zzPerda[index] < -1.5) {
+            zzLots[index] = 0;
+            zzRiskGain[index] = -99;
+        }
     }
 
     if (((zzRiskGain[index] < MIN_RISK_GAIN || (swapShort < -1.0 && index != 5)) && zzState[index] == ST_DOWN) || 
