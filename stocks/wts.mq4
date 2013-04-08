@@ -687,7 +687,9 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
 
     if (((zzRiskGain[index] < MIN_RISK_GAIN || (swapShort < -1.0 && index != 5)) && zzState[index] == ST_DOWN) || 
         ((zzRiskGain[index] < MIN_RISK_GAIN || (swapLong < -1.0 && index != 5)) && zzState[index] == ST_UP) || 
-        (zzTradeCount[index] == true)) {
+        (zzTradeCount[index] == true) ||
+        (zzState[index] == ST_UP && zzState[index-1] == ST_DOWN && zzTradeCount[index-1] == true) ||
+        (zzState[index] == ST_DOWN && zzState[index-1] == ST_UP && zzTradeCount[index-1] == true)) {
             zz33Start[index] = 0;
             zz50Start[index] = 0;
             zz60Start[index] = 0;
@@ -942,7 +944,7 @@ void checkOrders()
 
                 if ((stopLoss < price) && 
                     ((Bid - price) > ((price - stopLoss)*2)) ||
-                    ((zzState[getIndexByPeriod(period)] == ST_UNDEF || zzState[getIndexByPeriod(period)] == ST_CONG) && (Bid > price))) {
+                    ((zzState[getIndexByPeriod(period)] == ST_UNDEF || zzState[getIndexByPeriod(period)] == ST_CONG) && (Bid > price) && (iCustom(Symbol(), period, "ZigZag", 0, 0) == 0))) {
 
                     if (!OrderModify(ticket, price, price, takeProfit, 0, Blue)) {
                         Sleep(10000);
@@ -970,7 +972,7 @@ void checkOrders()
                 
                 if ((stopLoss > price) && 
                     ((price - Ask) > ((stopLoss - price)*2)) ||
-                    ((zzState[getIndexByPeriod(period)] == ST_UNDEF || zzState[getIndexByPeriod(period)] == ST_CONG) && (Ask < price))) {
+                    ((zzState[getIndexByPeriod(period)] == ST_UNDEF || zzState[getIndexByPeriod(period)] == ST_CONG) && (Ask < price) && (iCustom(Symbol(), period, "ZigZag", 0, 0) == 0))) {
                     if (!OrderModify(ticket, price, price, takeProfit, 0, Blue)) {
                         Sleep(10000);
                     }
