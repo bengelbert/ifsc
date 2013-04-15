@@ -55,6 +55,7 @@ static bool zzTradeCount[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zzLucro[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zzPerda[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static int zzReturn[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static double zzPercResult = 0;
 
 
 //+------------------------------------------------------------------+
@@ -309,7 +310,7 @@ int start()
                   "SPREAD: " + DoubleToStr(spread, 0) + 
                   " SWLONG: " + DoubleToStr(swapLong, 2) + 
                   " SWSHORT: " + DoubleToStr(swapShort, 2) +
-                  " LUCRO: " + DoubleToStr((AccountEquity()-AccountBalance())/AccountBalance() * 100, 2) + "%", 
+                  " LUCRO: " + DoubleToStr(zzPercResult * 100, 2) + "%", 
                   7, "Arial", DarkOrange);
 
     ObjectSetText("label_state1",
@@ -916,6 +917,9 @@ void checkOrders()
     double stopLoss;
     double takeProfit;
     double lots;
+    double recuo = 0;
+    double risco_ganho = 0;
+    double patrimonio = 0;
     double newStop = 0;
     double price005 = 0;
     double price020 = 0;
@@ -945,6 +949,21 @@ void checkOrders()
                 str_open += 1;
                 str_close = StringFind(OrderComment(), "]", str_open);
                 period = StrToInteger(StringSubstr(OrderComment(), str_open, str_close-str_open));
+                
+                str_open = StringFind(OrderComment(), "[", str_close);
+                str_open += 1;
+                str_close = StringFind(OrderComment(), "]", str_open);
+                recuo = StrToInteger(StringSubstr(OrderComment(), str_open, str_close-str_open));
+                
+                str_open = StringFind(OrderComment(), "[", str_close);
+                str_open += 1;
+                str_close = StringFind(OrderComment(), "]", str_open);
+                risco_ganho = StrToInteger(StringSubstr(OrderComment(), str_open, str_close-str_open));
+                
+                str_open = StringFind(OrderComment(), "[", str_close);
+                str_open += 1;
+                str_close = StringFind(OrderComment(), "]", str_open);
+                patrimonio = StrToInteger(StringSubstr(OrderComment(), str_open, str_close-str_open));
             }
             
             ticket = OrderTicket();
@@ -952,6 +971,15 @@ void checkOrders()
             price = OrderOpenPrice();
             stopLoss = OrderStopLoss();
             takeProfit = OrderTakeProfit();
+
+            if (AccountBalance() < patrimonio) {
+                perc_gain = AccountProfit() / patrimonio;
+            } else {
+                perc_gain = AccountProfit() / AccountBalance();
+            }
+               
+            zzPercResult = perc_gain;
+
             // long position is opened
             if(OrderType() == OP_BUY) {
                 
@@ -963,27 +991,30 @@ void checkOrders()
 
                 threshold = NormalizeDouble((iLow(Symbol(), period, 1) - (zzMedShadow[getIndexByPeriod(period)]) * Point), 5);
 
-                perc_gain = AccountProfit() / AccountBalance();
                 perna = Bid - price;
                 
-                if (perc_gain >= 1.2 && Bid > price && (price + (perna / 1.2)) > stopLoss) {
+                if (NormalizeDouble(perc_gain, 1) == 1.2 && Bid > price && (price + (perna / 1.2)) > stopLoss) {
                     if (!OrderModify(ticket, price, (price + (perna / 1.20)), takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (perc_gain >= 1.0 && Bid > price && (price + (perna / 1.25)) > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 1) == 1.0 && Bid > price && (price + (perna / 1.25)) > stopLoss) {
                     if (!OrderModify(ticket, price, (price + (perna / 1.25)), takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (perc_gain >= 0.8 && Bid > price && (price + (perna / 1.33)) > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 1) == 0.8 && Bid > price && (price + (perna / 1.33)) > stopLoss) {
                     if (!OrderModify(ticket, price, (price + (perna / 1.33)), takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (perc_gain >= 0.6 && Bid > price && (price + (perna / 1.5)) > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 1) == 0.6 && Bid > price && (price + (perna / 1.5)) > stopLoss) {
                     if (!OrderModify(ticket, price, (price + (perna / 1.5)), takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (perc_gain >= 0.4 && Bid > price && (price + (perna / 2)) > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 1) == 0.4 && Bid > price && (price + (perna / 2)) > stopLoss) {
                     if (!OrderModify(ticket, price, (price + (perna / 2)), takeProfit, 0, White)) {
+                        Sleep(10000);
+                    }
+                } else if (NormalizeDouble(perc_gain, 1) == 0.2 && Bid > price && price > stopLoss) {
+                    if (!OrderModify(ticket, price, price, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
                 } else if ((zzState[getIndexByPeriod(period)] == ST_UNDEF || zzState[getIndexByPeriod(period)] == ST_CONG) && (iCustom(Symbol(), period, "ZigZag", 0, 0) == 0) && (iLow(Symbol(), period, 1) - (zzMedShadow[getIndexByPeriod(period)] + spread) * Point) > stopLoss) {
@@ -1018,27 +1049,30 @@ void checkOrders()
                 
                 threshold = NormalizeDouble((iHigh(Symbol(), period, 1) + (zzMedShadow[getIndexByPeriod(period)] + spread) * Point), 5);
                 
-                perc_gain = AccountProfit() / AccountBalance();
                 perna = price - Ask;
                 
-                if (perc_gain >= 1.2 && Ask < price && (price - (perna / 1.2)) < stopLoss) {
+                if (NormalizeDouble(perc_gain, 1) == 1.2 && Ask < price && (price - (perna / 1.2)) < stopLoss) {
                     if (!OrderModify(ticket, price, (price - (perna / 1.2)), takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (perc_gain >= 1.0 && Ask < price && (price - (perna / 1.25)) < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 1) == 1.0 && Ask < price && (price - (perna / 1.25)) < stopLoss) {
                     if (!OrderModify(ticket, price, (price - (perna / 1.25)), takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (perc_gain >= 0.8 && Ask < price && (price - (perna / 1.33)) < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 1) == 0.8 && Ask < price && (price - (perna / 1.33)) < stopLoss) {
                     if (!OrderModify(ticket, price, (price - (perna / 1.33)), takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (perc_gain >= 0.6 && Ask < price && (price - (perna / 1.5)) < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 1) == 0.6 && Ask < price && (price - (perna / 1.5)) < stopLoss) {
                     if (!OrderModify(ticket, price, (price - (perna / 1.5)), takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (perc_gain >= 0.4 && Ask < price && (price + (perna / 2)) < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 1) == 0.4 && Ask < price && (price - (perna / 2)) < stopLoss) {
                     if (!OrderModify(ticket, price, (price - (perna / 2)), takeProfit, 0, White)) {
+                        Sleep(10000);
+                    }
+                } else if (NormalizeDouble(perc_gain, 1) == 0.2 && Ask < price && price < stopLoss) {
+                    if (!OrderModify(ticket, price, price, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
                 } else if ((zzState[getIndexByPeriod(period)] == ST_UNDEF || zzState[getIndexByPeriod(period)] == ST_CONG) && (iCustom(Symbol(), period, "ZigZag", 0, 0) == 0) && (iHigh(Symbol(), period, 1) + (zzMedShadow[getIndexByPeriod(period)] + spread) * Point) < stopLoss) {
