@@ -57,7 +57,7 @@ static double zzLucro[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zzPerda[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static int zzReturn[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zzPercResult = 0;
-
+static double zzPercProt[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 
 //+------------------------------------------------------------------+
 //| expert initialization function                                   |
@@ -85,7 +85,7 @@ int init()
     ObjectSet("label_state2", OBJPROP_CORNER, 0);    // Reference corner
     ObjectSet("label_state2", OBJPROP_XDISTANCE, 10);// X coordinate
     ObjectSet("label_state2", OBJPROP_YDISTANCE, 41);// Y coordinate
-
+/*
     ObjectCreate("label_state3", OBJ_LABEL, 0, 0, 0);// Creating obj.
     ObjectSet("label_state3", OBJPROP_CORNER, 0);    // Reference corner
     ObjectSet("label_state3", OBJPROP_XDISTANCE, 10);// X coordinate
@@ -95,16 +95,16 @@ int init()
     ObjectSet("label_state4", OBJPROP_CORNER, 0);    // Reference corner
     ObjectSet("label_state4", OBJPROP_XDISTANCE, 10);// X coordinate
     ObjectSet("label_state4", OBJPROP_YDISTANCE, 67);// Y coordinate
-
+*/
     ObjectCreate("label_state5", OBJ_LABEL, 0, 0, 0);// Creating obj.
     ObjectSet("label_state5", OBJPROP_CORNER, 0);    // Reference corner
     ObjectSet("label_state5", OBJPROP_XDISTANCE, 10);// X coordinate
-    ObjectSet("label_state5", OBJPROP_YDISTANCE, 80);// Y coordinate
+    ObjectSet("label_state5", OBJPROP_YDISTANCE, 54);// Y coordinate
 
     ObjectCreate("label_state6", OBJ_LABEL, 0, 0, 0);// Creating obj.
     ObjectSet("label_state6", OBJPROP_CORNER, 0);    // Reference corner
     ObjectSet("label_state6", OBJPROP_XDISTANCE, 10);// X coordinate
-    ObjectSet("label_state6", OBJPROP_YDISTANCE, 93);// Y coordinate
+    ObjectSet("label_state6", OBJPROP_YDISTANCE, 67);// Y coordinate
 
     return(0);
 }
@@ -311,7 +311,7 @@ int start()
                   "SPREAD: " + DoubleToStr(spread, 0) + 
                   " SWLONG: " + DoubleToStr(swapLong, 2) + 
                   " SWSHORT: " + DoubleToStr(swapShort, 2) +
-                  " LUCRO: " + DoubleToStr(zzPercResult * 100, 2) + "%", 
+                  " LUCRO: " + DoubleToStr(zzPercResult, 2) + "", 
                   7, "Arial", DarkOrange);
 
     ObjectSetText("label_state1",
@@ -331,7 +331,7 @@ int start()
                   " W1(" + DoubleToStr(zzRiskGain[1], 1) +")" +
                   " MN1(" + DoubleToStr(zzRiskGain[0], 1) +")" ,
                   7, "Arial", DarkOrange);
-
+/*
     ObjectSetText("label_state3",
                   "TRADE: M5(" + DoubleToStr(zzTradeCount[5], 0) +")" +
                   " H1(" + DoubleToStr(zzTradeCount[4], 0) +")" +
@@ -349,7 +349,7 @@ int start()
                   " W1(" + zzTradeBlock[1]+")" +
                   " MN1(" + zzTradeBlock[0]+")", 
                   7, "Arial", DarkOrange);
-
+*/
     ObjectSetText("label_state5",
                   "%: M5(" + DoubleToStr(zzPercorrido[5]*100,2)+")" +
                   " H1(" + DoubleToStr(zzPercorrido[4]*100,2)+")" +
@@ -360,6 +360,15 @@ int start()
                   7, "Arial", DarkOrange);
 
     ObjectSetText("label_state6",
+                  "%: M5(" + DoubleToStr(zzPercProt[5]*100,2)+")" +
+                  " H1(" + DoubleToStr(zzPercProt[4]*100,2)+")" +
+                  " H4(" + DoubleToStr(zzPercProt[3]*100,2)+")" +
+                  " D1(" + DoubleToStr(zzPercProt[2]*100,2)+")" +
+                  " W1(" + DoubleToStr(zzPercProt[1]*100,2)+")" +
+                  " MN1(" + DoubleToStr(zzPercProt[0]*100,2)+")", 
+                  7, "Arial", DarkOrange);
+/*
+    ObjectSetText("label_state7",
                   "LT: M5(" + DoubleToStr(zzLots[5],2)+")" +
                   " H1(" + DoubleToStr(zzLots[4],2)+")" +
                   " H4(" + DoubleToStr(zzLots[3],2)+")" +
@@ -367,7 +376,7 @@ int start()
                   " W1(" + DoubleToStr(zzLots[1],2)+")" +
                   " MN1(" + DoubleToStr(zzLots[0],2)+")", 
                   7, "Arial", DarkOrange);
-
+*/
     checkOrders();
     checkDecision();
     
@@ -924,13 +933,6 @@ void checkOrders()
     double risco_ganho = 0;
     double patrimonio = 0;
     double newStop = 0;
-    double perna003 = 0;
-    double perna005 = 0;
-    double perna008 = 0;
-    double perna013 = 0;
-    double perna021 = 0;
-    double perna034 = 0;
-    double perna050 = 0;
     double lucro003 = 0;
     double lucro005 = 0;
     double lucro008 = 0;
@@ -947,12 +949,18 @@ void checkOrders()
     zzTradeCount[4] = false;
     zzTradeCount[5] = false;
     
+    zzPercProt[0] = 0;
+    zzPercProt[1] = 0;
+    zzPercProt[2] = 0;
+    zzPercProt[3] = 0;
+    zzPercProt[4] = 0;
+    
 //----
     for(int i = 0; i < total; i++) {
         OrderSelect(i, SELECT_BY_POS, MODE_TRADES); 
         // check for symbol & magic number
-        //if(OrderSymbol() == Symbol() && OrderMagicNumber() == zzMagicNumber) {
-        if(OrderSymbol() == Symbol()) {
+        if(OrderSymbol() == Symbol() && OrderMagicNumber() == zzMagicNumber) {
+        //if(OrderSymbol() == Symbol()) {
             
             RefreshRates();
       
@@ -993,21 +1001,17 @@ void checkOrders()
                 perc_gain = AccountProfit() / AccountBalance();
             }
                
-            zzPercResult = perc_gain;
+            //zzPercResult = perc_gain;
 
             // long position is opened
             if(OrderType() == OP_BUY) {
+            
+                zzPercResult = (stopLoss - price) * lots / Point;
                 
                 zzTradeCount[getIndexByPeriod(period)] = true;
                 zzPercorrido[getIndexByPeriod(period)] = (Bid - price) / (takeProfit - price);
 
-                perna003 = price + NormalizeDouble((takeProfit - price) * 0.03, 5);
-                perna005 = price + NormalizeDouble((takeProfit - price) * 0.05, 5);
-                perna008 = price + NormalizeDouble((takeProfit - price) * 0.08, 5);
-                perna013 = price + NormalizeDouble((takeProfit - price) * 0.13, 5);
-                perna021 = price + NormalizeDouble((takeProfit - price) * 0.21, 5);
-                perna034 = price + NormalizeDouble((takeProfit - price) * 0.34, 5);
-                perna050 = price + NormalizeDouble((takeProfit - price) * 0.55, 5);
+                zzPercProt[getIndexByPeriod(period)] = calcPercProt(zzPercorrido[getIndexByPeriod(period)], risco_ganho);
 
                 threshold = NormalizeDouble((iLow(Symbol(), period, 1) - (zzMedShadow[getIndexByPeriod(period)]) * Point), 5);
 
@@ -1020,36 +1024,36 @@ void checkOrders()
                 lucro021 = NormalizeDouble(price + (perna / 2.38), 5);
                 lucro034 = NormalizeDouble(price + (perna / 1.76), 5);
                 lucro050 = NormalizeDouble(price + (perna / 1.27), 5);
-                
-                if (NormalizeDouble(perc_gain, 2) >= 0.8 && Bid > price && threshold > stopLoss && is_high_up_candle(period)) {
+/*
+                if (NormalizeDouble(perc_gain, 2) >= 0.8 && Bid > price && threshold > stopLoss && is_high_up_candle(period) && stopLoss >= price) {
                     if (!OrderModify(ticket, price, threshold, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.7 && Bid > price && lucro050 > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.7 && Bid > price && lucro050 > stopLoss && stopLoss >= price) {
                     if (!OrderModify(ticket, price, lucro050, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.6 && Bid > price && lucro034 > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.6 && Bid > price && lucro034 > stopLoss && stopLoss >= price) {
                     if (!OrderModify(ticket, price, lucro034, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.5 && Bid > price && lucro021 > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.5 && Bid > price && lucro021 > stopLoss && stopLoss >= price) {
                     if (!OrderModify(ticket, price, lucro021, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.4 && Bid > price && lucro013 > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.4 && Bid > price && lucro013 > stopLoss && stopLoss >= price) {
                     if (!OrderModify(ticket, price, lucro013, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.3 && Bid > price && lucro008 > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.3 && Bid > price && lucro008 > stopLoss && stopLoss >= price) {
                     if (!OrderModify(ticket, price, lucro008, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.2 && Bid > price && lucro005 > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.2 && Bid > price && lucro005 > stopLoss && stopLoss >= price) {
                     if (!OrderModify(ticket, price, lucro005, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.1 && Bid > price && lucro003 > stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.1 && Bid > price && lucro003 > stopLoss && stopLoss >= price) {
                     if (!OrderModify(ticket, price, lucro003, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
@@ -1064,56 +1068,54 @@ void checkOrders()
                             Sleep(10000);
                         }                
                     }
-                } else if ((stopLoss < price) && ((Bid - price) > ((price - stopLoss)*2))) {
+                
+                } else */
+                if ((stopLoss < price) && ((Bid - price) > ((price - stopLoss)*2))) {
                     if (!OrderModify(ticket, price, price, takeProfit, 0, Blue)) {
                         Sleep(10000);
                     } 
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.1) && (perna003 > stopLoss)) {
-                    if (!OrderModify(ticket, price, perna003, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.1*10/risco_ganho, 2)) && (lucro003 > stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro003, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.2) && (perna005 > stopLoss)) {
-                    if (!OrderModify(ticket, price, perna005, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.2*10/risco_ganho, 2)) && (lucro005 > stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro005, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.3) && (perna008 > stopLoss)) {
-                    if (!OrderModify(ticket, price, perna008, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.3*10/risco_ganho, 2)) && (lucro008 > stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro008, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.4) && (perna013 > stopLoss)) {
-                    if (!OrderModify(ticket, price, perna013, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.4*10/risco_ganho, 2)) && (lucro013 > stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro013, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.5) && (perna021 > stopLoss)) {
-                    if (!OrderModify(ticket, price, perna021, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.5*10/risco_ganho, 2)) && (lucro021 > stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro021, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.6) && (perna034 > stopLoss)) {
-                    if (!OrderModify(ticket, price, perna034, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.6*10/risco_ganho, 2)) && (lucro034 > stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro034, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.7) && (perna050 > stopLoss)) {
-                    if (!OrderModify(ticket, price, perna050, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.7*10/risco_ganho, 2)) && (lucro050 > stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro050, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((zzPercorrido[getIndexByPeriod(period)] >= 0.80) && threshold > stopLoss && is_high_up_candle(period)) {
-                    if (!OrderModify(ticket, price, threshold, takeProfit, 0, Gray)) {
+                } else if ((zzPercorrido[getIndexByPeriod(period)] >= NormalizeDouble(0.80*10/risco_ganho, 2)) && threshold > stopLoss && is_high_up_candle(period)) {
+                    if (!OrderModify(ticket, price, threshold, takeProfit, 0, Yellow)) {
                         Sleep(10000);
                     }
                 }
             } else if (OrderType() == OP_SELL) {
 
+                zzPercResult = (price - stopLoss) * lots / Point;
+                
                 zzTradeCount[getIndexByPeriod(period)] = true;
                 zzPercorrido[getIndexByPeriod(period)] = (price - Ask) / (price - takeProfit);
 
-                perna003 = price - NormalizeDouble((price - takeProfit) * 0.03, 5);
-                perna005 = price - NormalizeDouble((price - takeProfit) * 0.05, 5);
-                perna008 = price - NormalizeDouble((price - takeProfit) * 0.08, 5);
-                perna013 = price - NormalizeDouble((price - takeProfit) * 0.13, 5);
-                perna021 = price - NormalizeDouble((price - takeProfit) * 0.21, 5);
-                perna034 = price - NormalizeDouble((price - takeProfit) * 0.34, 5);
-                perna050 = price - NormalizeDouble((price - takeProfit) * 0.55, 5);
-                
+                zzPercProt[getIndexByPeriod(period)] = calcPercProt(zzPercorrido[getIndexByPeriod(period)], risco_ganho);
+
                 threshold = NormalizeDouble((iHigh(Symbol(), period, 1) + (zzMedShadow[getIndexByPeriod(period)] + spread) * Point), 5);
                 
                 perna = price - Ask;
@@ -1126,40 +1128,41 @@ void checkOrders()
                 lucro034 = NormalizeDouble(price - (perna / 1.76), 5);
                 lucro050 = NormalizeDouble(price - (perna / 1.27), 5);
 
-                if (NormalizeDouble(perc_gain, 2) >= 0.8 && Ask < price && threshold < stopLoss && is_low_down_candle(period)) {
+/*
+                if (NormalizeDouble(perc_gain, 2) >= 0.8 && Ask < price && threshold < stopLoss && is_low_down_candle(period) && stopLoss <= price) {
                     if (!OrderModify(ticket, price, threshold, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.7 && Ask < price && lucro050 < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.7 && Ask < price && lucro050 < stopLoss && stopLoss <= price) {
                     if (!OrderModify(ticket, price, lucro050, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.6 && Ask < price && lucro034 < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.6 && Ask < price && lucro034 < stopLoss && stopLoss <= price) {
                     if (!OrderModify(ticket, price, lucro034, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.5 && Ask < price && lucro021 < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.5 && Ask < price && lucro021 < stopLoss && stopLoss <= price) {
                     if (!OrderModify(ticket, price, lucro021, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.4 && Ask < price && lucro013 < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.4 && Ask < price && lucro013 < stopLoss && stopLoss <= price) {
                     if (!OrderModify(ticket, price, lucro013, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.3 && Ask < price && lucro008 < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.3 && Ask < price && lucro008 < stopLoss && stopLoss <= price) {
                     if (!OrderModify(ticket, price, lucro008, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.2 && Ask < price && lucro005 < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.2 && Ask < price && lucro005 < stopLoss && stopLoss <= price) {
                     if (!OrderModify(ticket, price, lucro005, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
-                } else if (NormalizeDouble(perc_gain, 2) == 0.1 && Ask < price && lucro003 < stopLoss) {
+                } else if (NormalizeDouble(perc_gain, 2) == 0.1 && Ask < price && lucro003 < stopLoss && stopLoss <= price) {
                     if (!OrderModify(ticket, price, lucro003, takeProfit, 0, White)) {
                         Sleep(10000);
                     }
                 } else if ((zzState[getIndexByPeriod(period)] == ST_UNDEF || zzState[getIndexByPeriod(period)] == ST_CONG) && (iCustom(Symbol(), period, "ZigZag", 0, 0) == 0) && threshold < stopLoss && is_low_down_candle(period)) {
-                
+                /*
                     if (stopLoss > zzTop[getIndexByPeriod(period)] && threshold < zzTop[getIndexByPeriod(period)]) {
                         threshold = zzTop[getIndexByPeriod(period)] + (zzMedShadow[getIndexByPeriod(period)] * Point);
                     }
@@ -1169,40 +1172,42 @@ void checkOrders()
                             Sleep(10000);
                         }                
                     }
-                } else if ((stopLoss > price) && ((price - Ask) > ((stopLoss - price)*2))) {
+                    
+                } else */
+                if ((stopLoss > price) && ((price - Ask) > ((stopLoss - price)*2))) {
                     if (!OrderModify(ticket, price, price, takeProfit, 0, Blue)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.1) && (perna003 < stopLoss)) {
-                    if (!OrderModify(ticket, price, perna003, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.1*10/risco_ganho, 2)) && (lucro003 < stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro003, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.2) && (perna005 < stopLoss)) {
-                    if (!OrderModify(ticket, price, perna005, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.2*10/risco_ganho, 2)) && (lucro005 < stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro005, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.3) && (perna008 < stopLoss)) {
-                    if (!OrderModify(ticket, price, perna008, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.3*10/risco_ganho, 2)) && (lucro008 < stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro008, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.4) && (perna013 < stopLoss)) {
-                    if (!OrderModify(ticket, price, perna013, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.4*10/risco_ganho, 2)) && (lucro013 < stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro013, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.5) && (perna021 < stopLoss)) {
-                    if (!OrderModify(ticket, price, perna021, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.5*10/risco_ganho, 2)) && (lucro021 < stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro021, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.6) && (perna034 < stopLoss)) {
-                    if (!OrderModify(ticket, price, perna034, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.6*10/risco_ganho, 2)) && (lucro034 < stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro034, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == 0.7) && (perna050 < stopLoss)) {
-                    if (!OrderModify(ticket, price, perna050, takeProfit, 0, Green)) {
+                } else if ((NormalizeDouble(zzPercorrido[getIndexByPeriod(period)], 2) == NormalizeDouble(0.7*10/risco_ganho, 2)) && (lucro050 < stopLoss)) {
+                    if (!OrderModify(ticket, price, lucro050, takeProfit, 0, Green)) {
                         Sleep(10000);
                     }
-                } else if ((zzPercorrido[getIndexByPeriod(period)] >= 0.80) && threshold < stopLoss && is_low_down_candle(period)) {
-                    if (!OrderModify(ticket, price, threshold, takeProfit, 0, Gray)) {
+                } else if ((zzPercorrido[getIndexByPeriod(period)] >= NormalizeDouble(0.80*10/risco_ganho, 2)) && threshold < stopLoss && is_low_down_candle(period)) {
+                    if (!OrderModify(ticket, price, threshold, takeProfit, 0, Yellow)) {
                         Sleep(10000);
                     }
                 }
@@ -1245,4 +1250,24 @@ bool is_low_down_candle(int period)
     }
     
     return (cond);
+}
+
+double calcPercProt(double perc, double rg) 
+{
+    int i = 0;
+    double prot = 0;
+    double faixa = 0.1;
+    
+    perc = NormalizeDouble(perc, 2);
+    
+    for (i = 0; i < 8; i++) {
+        prot = NormalizeDouble(faixa*10/rg, 2);
+        if (perc < prot) {
+            break;
+        }
+        
+        faixa += 0.1;
+    }
+    
+    return (prot);
 }
