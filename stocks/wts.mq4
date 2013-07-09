@@ -42,7 +42,8 @@ static double zzTopTimeFrame[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleTopBottomCount[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_agressiveState[MAX_PERIOD] = {ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF};
 static double m_candleShadowMed[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
-static double zzRisk[MAX_PERIOD] = {0.16,0.08,0.04,0.02,0.01,0.005,0.01,0.01,0.01};
+static double zzRisk[MAX_PERIOD] = {0.40,0.20,0.10,0.05,0.025,0.005,0.01,0.01,0.01};
+//static double zzRisk[MAX_PERIOD] = {0.16,0.08,0.04,0.02,0.01,0.005,0.01,0.01,0.01};
 static double m_candleLeg[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zz33Start[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zz50Start[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
@@ -88,7 +89,7 @@ static double m_orderStopLoss[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_orderStopLossGain[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_orderTakeProfit[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_orderTakeProfitGain[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
-static double m_orderTicket[MAX_PERIOD] = {-1,-1,-1,-1,-1,-1,-1,-1};
+static int    m_orderTicket[MAX_PERIOD] = {-1,-1,-1,-1,-1,-1,-1,-1};
 
 //+------------------------------------------------------------------+
 //| expert initialization function                                   |
@@ -508,7 +509,7 @@ double getRisk(int index)
     double risk = 0;
     double spread = MarketInfo(Symbol(), MODE_SPREAD);
     
-    switch (m_agressiveState[index]) {
+    switch (m_normalState[index]) {
         case ST_UNDEF: risk = 0; break;
         case ST_CONG: risk = zzRisk[index]; break;
         //case ST_NORISK: risk = zzRisk[index]; break;
@@ -834,9 +835,9 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
     zzRiskGain[index] = NormalizeDouble(zzRiskGain[index], 0);
     
     // Remove trade agressivo para 1 hora
-    if (index == 4) {
-        zzRiskGain[index] = 0;    
-    }
+    //if (index == 4) {
+    zzRiskGain[index] = 0;    
+    //}
 
     if (((zzRiskGain[index] < MIN_RISK_GAIN) && m_agressiveState[index] == ST_DOWN) || 
         ((zzRiskGain[index] < MIN_RISK_GAIN) && m_agressiveState[index] == ST_UP) || 
@@ -1093,7 +1094,7 @@ void wtsNormalTradeDecision(int index)
         } 
     } else if (wtsNormalTradeValidDecision(index) && NormalizeDouble(Ask, Digits-1) == m_normalTradeStart[index]) {
         RefreshRates();
-        ticket = OrderSend(Symbol(), OP_SELL, zzLots[index], Bid, 3, 
+        ticket = OrderSend(Symbol(), OP_SELL, m_normalTradeLots[index], Bid, 3, 
                            Ask + (m_normalTradeRisk[index] * Point), m_normalTradeTakeProfit[index], 
                            "["+wtsGetPeriodByIndex(index)+"][99]["+DoubleToStr(m_normalTradeRiskGain[index], 0)+"]["+DoubleToStr(AccountBalance(),0)+"]", 
                            zzMagicNumber, 0, Blue);
@@ -1210,8 +1211,8 @@ void checkOrders()
                 m_orderStopLossGain[index] = ((m_orderStopLoss[index] - m_orderOpenPrice[index])) * m_orderLots[index] / Point;
                 m_orderStopLossGain[index] += OrderSwap();
                 
-                m_orderTakeProfitGain[index] = ((m_orderTakeProfit[index] - m_orderOpenPrice[index])) * m_orderLots[index] / Point;
-                
+                m_orderTakeProfitGain[index] = ((m_orderTakeProfit[index] - m_orderOpenPrice[index]) / Point) * m_orderLots[index];
+
                 m_orderPercent[index] = (Bid - m_orderOpenPrice[index]) / (m_orderTakeProfit[index] - m_orderOpenPrice[index]);
                 
                 stopLoss = wtsStopLossCalc(index, OP_BUY);
@@ -1220,11 +1221,16 @@ void checkOrders()
                 
                 threshold = NormalizeDouble((iLow(Symbol(), period, 1) - (m_candleShadowMed[index]) * Point), 5);
                 
+                if (NormalizeDouble(Bid, Digits-1) > m_orderProtectionValuePrev[index]) {
+                    m_orderProtectionValuePrev[index] = m_orderProtectionValue[index];
+                    m_orderPercentToProtectionPrev[index] = m_orderPercentToProtection[index];
+                }
+                
                 if ((m_orderStopLoss[index] < m_orderOpenPrice[index]) && ((Bid - m_orderOpenPrice[index]) > ((m_orderOpenPrice[index] - m_orderStopLoss[index])*2))) {
                     if (!OrderModify(m_orderTicket[index], m_orderOpenPrice[index], m_orderOpenPrice[index], m_orderTakeProfit[index], 0, Blue)) {
                         Sleep(1000);
                     } 
-                } else if (stopLoss > m_orderStopLoss[index] && candlePrevClose > m_orderProtectionValuePrev[index]) {
+                } else if (stopLoss > m_orderStopLoss[index] && NormalizeDouble(Bid, Digits-1) == m_orderProtectionValuePrev[index]) {
                     if (!OrderModify(m_orderTicket[index], m_orderOpenPrice[index], stopLoss, m_orderTakeProfit[index], 0, Green)) {
                         Sleep(1000);
                     } else {
@@ -1252,11 +1258,16 @@ void checkOrders()
                 
                 threshold = NormalizeDouble((iHigh(Symbol(), period, 1) + (m_candleShadowMed[index] + spread) * Point), 5);
                 
+                if (NormalizeDouble(Ask, Digits-1) < m_orderProtectionValuePrev[index]) {
+                    m_orderProtectionValuePrev[index] = m_orderProtectionValue[index];
+                    m_orderPercentToProtectionPrev[index] = m_orderPercentToProtection[index];
+                }
+                
                 if ((m_orderStopLoss[index] > m_orderOpenPrice[index]) && ((m_orderOpenPrice[index] - Ask) > ((m_orderStopLoss[index] - m_orderOpenPrice[index])*2))) {
                     if (!OrderModify(m_orderTicket[index], m_orderOpenPrice[index], m_orderOpenPrice[index], m_orderTakeProfit[index], 0, Blue)) {
                         Sleep(1000);
                     }
-                } else if (stopLoss < m_orderStopLoss[index] && candlePrevClose < m_orderProtectionValuePrev[index]) {
+                } else if (stopLoss < m_orderStopLoss[index] && NormalizeDouble(Ask, Digits-1) == m_orderProtectionValuePrev[index] && stopLoss != 0) {
                     if (!OrderModify(m_orderTicket[index], m_orderOpenPrice[index], stopLoss, m_orderTakeProfit[index], 0, Green)) {
                         Sleep(1000);
                     } else {
@@ -1328,7 +1339,7 @@ bool wtsCandleIsHigh(int period, int shift)
     close = iClose(Symbol(), period, shift);
     open = iOpen(Symbol(), period, shift);
     
-    if (close > open) {
+    if (close >= open) {
         cond = true;
     }
     
@@ -1344,7 +1355,7 @@ bool wtsCandleIsLow(int period, int shift)
     close = iClose(Symbol(), period, shift);
     open = iOpen(Symbol(), period, shift);
     
-    if (close < open) {
+    if (close <= open) {
         cond = true;
     }
     
@@ -1361,10 +1372,14 @@ int wtsNormalTrade(int index)
     double gain = 0;
     double loss = 0;
     double candleHigh = 0;
+    double candleHighOpt = 0;
     double candleLow = 0;
+    double candleLowOpt = 0;
     double candleHighNext = 0;
     double candleLowNext = 0;
     string comment = "";
+
+    RefreshRates();
 
     switch (m_normalState[index]) {
         case ST_UP:
@@ -1374,6 +1389,11 @@ int wtsNormalTrade(int index)
 
             candleLow = iLow(Symbol(), period, m_candleLowestRetration[index]);
             candleHigh = iHigh(Symbol(), period, m_candleLowestRetration[index]);
+            
+            if (candleHighestAfteLowest != m_candleLowestRetration[index] && iHigh(Symbol(), period, candleHighestAfteLowest) < (candleHigh + m_candleShadowMed[index]*Point)) {
+                candleHighestAfteLowest = m_candleLowestRetration[index];
+            }
+            
 
             if (m_candleLowestRetration[index] > 1 && wtsCandleIsHigh(period, m_candleLowestRetration[index]-1)) {
                 candleHighNext = iHigh(Symbol(), period, m_candleLowestRetration[index]-1);
@@ -1382,25 +1402,45 @@ int wtsNormalTrade(int index)
                     candleHigh = candleHighNext;
                 }
             }
-
+            
             if ((wtsCandleIsHigh(period, m_candleLowestRetration[index]) || wtsCandleIsHigh(period, m_candleLowestRetration[index]-1)) && candleHighestAfteLowest == m_candleLowestRetration[index] && m_candleLowestRetration[index] > 0) {
+                
                 
                 if ((candleHigh > m_candleFibo60[index] && candleLow < m_candleFibo60[index]) || 
                     (candleHigh > m_candleFibo50[index] && candleLow < m_candleFibo50[index]) ||
                     (candleHigh > m_candleFibo33[index] && candleLow < m_candleFibo33[index])) {
+
+                    candleHighOpt = iHigh(Symbol(), wtsGetPeriodPrev(period), 1);
+                    
+                    if ((candleHighOpt + m_candleShadowMed[index]/2*Point) >= Bid && wtsCandleIsHigh(wtsGetPeriodPrev(period), 1) && candleHighOpt < candleHigh) {
+                        candleHigh = candleHighOpt;
+                    }
 
                     m_normalTradeStart[index] = NormalizeDouble(candleHigh + m_candleShadowMed[index]/2*Point, Digits-1);
                     m_normalTradeStop[index] = NormalizeDouble(candleLow - m_candleShadowMed[index]/2*Point, Digits-1);
                     
                     m_normalTradeRisk[index] = (m_normalTradeStart[index] - m_normalTradeStop[index]) / Point;
                     m_normalTradeLots[index] = NormalizeDouble((AccountBalance() * getRisk(index)) / (m_normalTradeRisk[index] + spread), 2);
-                    
+
+/* Para debug                    
+                    comment = "Lots("+ DoubleToStr(m_normalTradeLots[index], 2) + 
+                              " "+ DoubleToStr(AccountBalance(), 2) + 
+                              " "+ DoubleToStr(getRisk(index), 2) + 
+                              " "+ DoubleToStr(m_normalTradeRisk[index] + spread, 0);
+                    m_normalTradeRiskGain[index] = 4;
+                    wtsPrintLine("apagar", index, candleHigh, Blue, comment);
+*/                    
                     m_normalTradeTakeProfit[index] = NormalizeDouble(m_normalTradeStop[index] + m_candleLeg[index] * Point, Digits-1);
                     
                     gain = (m_normalTradeTakeProfit[index] - m_normalTradeStart[index]) * m_normalTradeLots[index] / Point;
                     
                     loss = m_normalTradeRisk[index] * m_normalTradeLots[index];
-                    m_normalTradeRiskGain[index] = gain / loss;
+                    
+                    if (loss != 0) {
+                        m_normalTradeRiskGain[index] = gain / loss;
+                    } else {
+                        m_normalTradeRiskGain[index] = 0;
+                    }
                    
                     comment = "WTS_" + wtsGetPeriodNameByIndex(index) +": " +
                               "" + DoubleToStr(m_normalTradeLots[index], 2) +" | "+
@@ -1426,6 +1466,10 @@ int wtsNormalTrade(int index)
             candleLow = iLow(Symbol(), period, m_candleHighestRetration[index]);
             candleHigh = iHigh(Symbol(), period, m_candleHighestRetration[index]);
             
+            if (candleLowestAfteHighest != m_candleHighestRetration[index] && iLow(Symbol(), period, candleLowestAfteHighest) > (candleLow - m_candleShadowMed[index]*Point)) {
+                candleLowestAfteHighest = m_candleHighestRetration[index];
+            }
+
             if (m_candleHighestRetration[index] > 1 && wtsCandleIsLow(period, m_candleHighestRetration[index]-1)) {
                 candleLowNext = iLow(Symbol(), period, m_candleHighestRetration[index]-1);
             
@@ -1440,6 +1484,12 @@ int wtsNormalTrade(int index)
                     (candleHigh > m_candleFibo50[index] && candleLow < m_candleFibo50[index]) ||
                     (candleHigh > m_candleFibo33[index] && candleLow < m_candleFibo33[index])) {
 
+                    candleLowOpt = iLow(Symbol(), wtsGetPeriodPrev(period), 1);
+                    
+                    if ((candleLowOpt - (m_candleShadowMed[index]/2 - spread)*Point) <= Ask && wtsCandleIsLow(wtsGetPeriodPrev(period), 1) && candleLowOpt > candleLow) {
+                        candleLow = candleLowOpt;
+                    }
+
                     m_normalTradeStop[index] = NormalizeDouble(candleHigh + (m_candleShadowMed[index]/2 + spread)*Point, Digits-1);
                     m_normalTradeStart[index] = NormalizeDouble(candleLow - (m_candleShadowMed[index]/2 - spread)*Point, Digits-1);
 
@@ -1451,7 +1501,10 @@ int wtsNormalTrade(int index)
                     gain = (m_normalTradeStart[index] - m_normalTradeTakeProfit[index]) * m_normalTradeLots[index] / Point;
 
                     loss = m_normalTradeRisk[index] * m_normalTradeLots[index];
-                    m_normalTradeRiskGain[index] = gain / loss;
+                    
+                    if (loss != 0) {
+                        m_normalTradeRiskGain[index] = gain / loss;
+                    }
                    
                     comment = "WTS_" + wtsGetPeriodNameByIndex(index) +": " +
                               "" + DoubleToStr(m_normalTradeLots[index], 2) +" | "+
@@ -1475,13 +1528,14 @@ int wtsNormalTrade(int index)
     
     m_normalTradeRiskGain[index] = NormalizeDouble(m_normalTradeRiskGain[index], 0);
     
+    wtsPrintLine("wts_normalTradeStart", index, m_normalTradeStart[index], Green, comment);
+    wtsPrintLine("wts_normalTradeStop", index, m_normalTradeStop[index], Red, "");
+
     if (m_normalState[index] == ST_UNDEF || m_normalTradeRiskGain[index] < WTS_NORMAL_TRADE_RISK_GAIN) {
         m_normalTradeStart[index] = 0;
         m_normalTradeStop[index] = 0;
     } 
 
-    wtsPrintLine("wts_normalTradeStart", index, m_normalTradeStart[index], Green, comment);
-    wtsPrintLine("wts_normalTradeStop", index, m_normalTradeStop[index], Red, "");
     wtsSetCandleFibo(index);
     
     return (0);
@@ -1500,6 +1554,9 @@ double wtsStopLossCalc(int index, int op_type)
     for (i = 0; i <= 50; i++) {
         
         stopLoss = wtsGetStopLossFibo(index, op_type, range);
+    
+        m_orderPercentToProtectionPrev[index] = prot;
+        m_orderProtectionValuePrev[index] = m_orderProtectionValue[index];
     
         prot = NormalizeDouble(range*10/m_orderRiskGain[index], 3);
 
@@ -1546,7 +1603,7 @@ double wtsGetStopLossFibo(int index, int op_type, double range)
         case OP_BUY:
             leg = Bid - m_orderOpenPrice[index];
         
-            switch (range) {
+            switch (NormalizeDouble(range, 1)) {
                 case 0.1: stop = NormalizeDouble(m_orderOpenPrice[index] + (leg * 0.03), 5); break;
                 case 0.2: stop = NormalizeDouble(m_orderOpenPrice[index] + (leg * 0.05), 5); break;
                 case 0.3: stop = NormalizeDouble(m_orderOpenPrice[index] + (leg * 0.08), 5); break;
@@ -1556,7 +1613,7 @@ double wtsGetStopLossFibo(int index, int op_type, double range)
                 case 0.7: stop = NormalizeDouble(m_orderOpenPrice[index] + (leg * 0.55), 5); break;
 
                 default:
-                    break;
+                    stop = NormalizeDouble(m_orderOpenPrice[index] + (leg * 0.55), 5); break;
             }
             
             break;
@@ -1577,7 +1634,7 @@ double wtsGetStopLossFibo(int index, int op_type, double range)
             break;
             
         default:
-            break;
+            stop = NormalizeDouble(m_orderOpenPrice[index] - (leg * 0.55), 5); break;
     }
 
     return (stop);
@@ -1614,7 +1671,7 @@ int wtsPrintLine(string name, int index, double value, int colored, string comme
     
     ObjectDelete(name + period);
 
-    if (value > 0 && m_orderActive[index] == false && (zzRiskGain[index] >= MIN_RISK_GAIN || m_normalTradeRiskGain[index] >= WTS_NORMAL_TRADE_RISK_GAIN)) {
+    if (value > 0 && m_orderActive[index] == false) {
         ObjectCreate(name + period, OBJ_HLINE, 0, 0, value);
         ObjectSet(name + period, OBJPROP_COLOR, colored); 
         ObjectSet(name + period, OBJPROP_STYLE, 2);
