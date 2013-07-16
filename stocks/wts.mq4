@@ -16,7 +16,7 @@
 //#define ST_NORISK   4
 #define MIN_SWAP    -5.0
 
-#define MAX_PERIOD      6
+#define MAX_PERIOD      5
 #define MIN_RISK_GAIN   10.0
 
 #define TOTAL_BARS  500
@@ -42,7 +42,7 @@ static double zzTopTimeFrame[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleTopBottomCount[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_agressiveState[MAX_PERIOD] = {ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF};
 static double m_candleShadowMed[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
-static double zzRisk[MAX_PERIOD] = {0.40,0.20,0.10,0.05,0.025,0.003125,0.01,0.01,0.01};
+static double zzRisk[MAX_PERIOD] = {0.40,0.20,0.10,0.05,0.025,0.00125,0.003125,0.01,0.01};
 //static double zzRisk[MAX_PERIOD] = {0.16,0.08,0.04,0.02,0.01,0.005,0.01,0.01,0.01};
 static double m_candleLeg[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zz33Start[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
@@ -99,45 +99,22 @@ int init()
 {
     int i;
     
-    for (i = 0; i < MAX_PERIOD; i++) {
-        ObjectDelete("top_"+wtsGetPeriodByIndex(i));
-        ObjectDelete("bottom_"+wtsGetPeriodByIndex(i));    
-    }
     ObjectCreate("label_start", OBJ_LABEL, 0, 0, 0);// Creating obj.
     ObjectSet("label_start", OBJPROP_CORNER, 0);    // Reference corner
     ObjectSet("label_start", OBJPROP_XDISTANCE, 10);// X coordinate
     ObjectSet("label_start", OBJPROP_YDISTANCE, 15);// Y coordinate
 
-    ObjectCreate("label_state1", OBJ_LABEL, 0, 0, 0);// Creating obj.
-    ObjectSet("label_state1", OBJPROP_CORNER, 0);    // Reference corner
-    ObjectSet("label_state1", OBJPROP_XDISTANCE, 10);// X coordinate
-    ObjectSet("label_state1", OBJPROP_YDISTANCE, 28);// Y coordinate
+//    for (i = 0; i < MAX_PERIOD; i++) {
+    for (i = 0; i < 0; i++) {
+        ObjectDelete("top_"+wtsGetPeriodByIndex(i));
+        ObjectDelete("bottom_"+wtsGetPeriodByIndex(i));    
 
-    ObjectCreate("label_state2", OBJ_LABEL, 0, 0, 0);// Creating obj.
-    ObjectSet("label_state2", OBJPROP_CORNER, 0);    // Reference corner
-    ObjectSet("label_state2", OBJPROP_XDISTANCE, 10);// X coordinate
-    ObjectSet("label_state2", OBJPROP_YDISTANCE, 41);// Y coordinate
-
-    ObjectCreate("label_state4", OBJ_LABEL, 0, 0, 0);// Creating obj.
-    ObjectSet("label_state4", OBJPROP_CORNER, 0);    // Reference corner
-    ObjectSet("label_state4", OBJPROP_XDISTANCE, 10);// X coordinate
-    ObjectSet("label_state4", OBJPROP_YDISTANCE, 54);// Y coordinate
-
-    ObjectCreate("label_state5", OBJ_LABEL, 0, 0, 0);// Creating obj.
-    ObjectSet("label_state5", OBJPROP_CORNER, 0);    // Reference corner
-    ObjectSet("label_state5", OBJPROP_XDISTANCE, 10);// X coordinate
-    ObjectSet("label_state5", OBJPROP_YDISTANCE, 67);// Y coordinate
-
-    ObjectCreate("label_state6", OBJ_LABEL, 0, 0, 0);// Creating obj.
-    ObjectSet("label_state6", OBJPROP_CORNER, 0);    // Reference corner
-    ObjectSet("label_state6", OBJPROP_XDISTANCE, 10);// X coordinate
-    ObjectSet("label_state6", OBJPROP_YDISTANCE, 80);// Y coordinate
-
-    ObjectCreate("label_state7", OBJ_LABEL, 0, 0, 0);// Creating obj.
-    ObjectSet("label_state7", OBJPROP_CORNER, 0);    // Reference corner
-    ObjectSet("label_state7", OBJPROP_XDISTANCE, 10);// X coordinate
-    ObjectSet("label_state7", OBJPROP_YDISTANCE, 93);// Y coordinate
-
+        ObjectCreate("label_state"+i, OBJ_LABEL, 0, 0, 0);// Creating obj.
+        ObjectSet("label_state"+i, OBJPROP_CORNER, 0);    // Reference corner
+        ObjectSet("label_state"+i, OBJPROP_XDISTANCE, 10);// X coordinate
+        ObjectSet("label_state"+i, OBJPROP_YDISTANCE, 28 + (13*i));// Y coordinate
+    }
+    
     return(0);
 }
 //+------------------------------------------------------------------+
@@ -171,7 +148,8 @@ int start()
     wtsCalcZigzag("D1", PERIOD_D1, 2);
     wtsCalcZigzag("H4", PERIOD_H4, 3);
     wtsCalcZigzag("H1", PERIOD_H1, 4);
-    wtsCalcZigzag("M5", PERIOD_M5, 5);
+    //wtsCalcZigzag("M15", PERIOD_M15, 5);
+    //wtsCalcZigzag("M5", PERIOD_M5, 6);
     
     for (i = 0; i < MAX_PERIOD; i++) {
         ObjectDelete("zz33Start_"+wtsGetPeriodByIndex(i));
@@ -263,8 +241,8 @@ int start()
 
         }                              
      
-        wtsPrintLine("zzStart", i, zzStart[i], Red, comment);
-        wtsPrintLine("zzStop", i, zzStop[i], Blue, "");
+        //wtsPrintLine("zzStart", i, zzStart[i], Red, comment);
+        //wtsPrintLine("zzStop", i, zzStop[i], Blue, "");
             
 /*        
         //33%
@@ -385,106 +363,16 @@ int start()
                   "Leg("+DoubleToStr((m_candleTop[getIndexByPeriod(Period())] - m_candleBottom[getIndexByPeriod(Period())]) / Point, 0)+") ",
                   7, "Arial", DarkOrange);
 
-    ObjectSetText("label_state1",
-                  "| M5 | " + getStateName(m_normalState[5]) + "(" + getStateName(m_agressiveState[5]) + ") | " +
-                  "" + DoubleToStr(m_normalTradeRiskGain[5], 0) + "(" + DoubleToStr(zzRiskGain[5], 0) + ") | " +
-                  "" + m_orderOpenBarShift[4] + ":" + m_orderActive[5] + ":" + (!wtsNormalTradeValidDecision(5)) + "(" +(!validDecision(5)) + ") | " + 
-                  "" + DoubleToStr(m_orderTakeProfitGain[5], 2) + " | " +
-                  "" + DoubleToStr(m_orderPercent[4]*100,2) + " | ", 
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state2",
-                  "| H1 | " + getStateName(m_normalState[4]) + "(" + getStateName(m_agressiveState[4]) + ") | " +
-                  "" + DoubleToStr(m_normalTradeRiskGain[4], 0) + "(" + DoubleToStr(zzRiskGain[4], 0) + ") | " +
-                  "" + m_orderOpenBarShift[4] + ":" + m_orderActive[4] + ":" + (!wtsNormalTradeValidDecision(4)) + "(" +(!validDecision(4)) + ") | " + 
-                  "" + DoubleToStr(m_orderTakeProfitGain[4], 2) + " | " +
-                  "" + DoubleToStr(m_orderPercent[4]*100,2) + " | ", 
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state4",
-                  "| H4 | " + getStateName(m_normalState[3]) + "(" + getStateName(m_agressiveState[3]) + ") | " +
-                  "" + DoubleToStr(m_normalTradeRiskGain[3], 0) + "(" + DoubleToStr(zzRiskGain[3], 0) + ") | " +
-                  "" + m_orderOpenBarShift[3] + ":" + m_orderActive[3] + ":" + (!wtsNormalTradeValidDecision(3)) + "(" +(!validDecision(3)) + ") | " + 
-                  "" + DoubleToStr(m_orderTakeProfitGain[3], 5) + " | " +
-                  "" + DoubleToStr(m_orderPercent[3]*100,2) + " | ", 
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state5",
-                  "| D1 | " + getStateName(m_normalState[2]) + "(" + getStateName(m_agressiveState[2]) + ") | " +
-                  "" + DoubleToStr(m_normalTradeRiskGain[2], 0) + "(" + DoubleToStr(zzRiskGain[2], 0) + ") | " +
-                  "" + m_orderOpenBarShift[2] + ":" + m_orderActive[2] + ":" + (!wtsNormalTradeValidDecision(2)) + "(" +(!validDecision(2)) + ") | " + 
-                  "" + DoubleToStr(m_orderTakeProfitGain[2], 2) + " | " +
-                  "" + DoubleToStr(m_orderPercent[2]*100,2) + " | ", 
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state6",
-                  "| W1 | " + getStateName(m_normalState[1]) + "(" + getStateName(m_agressiveState[1]) + ") | " +
-                  "" + DoubleToStr(m_normalTradeRiskGain[1], 0) + "(" + DoubleToStr(zzRiskGain[1], 0) + ") | " +
-                  "" + m_orderOpenBarShift[1] + ":" + m_orderActive[1] + ":" + (!wtsNormalTradeValidDecision(1)) + "(" +(!validDecision(1)) + ") | " + 
-                  "" + DoubleToStr(m_orderTakeProfitGain[1], 2) + " | " +
-                  "" + DoubleToStr(m_orderPercent[1]*100,2) + " | ", 
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state7",
-                  "| MN | " + getStateName(m_normalState[0]) + "(" + getStateName(m_agressiveState[0]) + ") | " +
-                  "" + DoubleToStr(m_normalTradeRiskGain[0], 0) + "(" + DoubleToStr(zzRiskGain[0], 0) + ") | " +
-                  "" + m_orderOpenBarShift[0] + ":" + m_orderActive[0] + ":" + (!wtsNormalTradeValidDecision(0)) + "(" +(!validDecision(0)) + ") | " + 
-                  "" + DoubleToStr(m_orderTakeProfitGain[0], 2) + " | " +
-                  "" + DoubleToStr(m_orderPercent[0]*100,2) + " | ", 
-                  7, "Arial", DarkOrange);
-
-/*
-    ObjectSetText("label_state2",
-                  "RG: H1(" + DoubleToStr(zzRiskGain[4], 1) +")" +
-                  " H4(" + DoubleToStr(zzRiskGain[3], 1) +")" +
-                  " D1(" + DoubleToStr(zzRiskGain[2], 1) +")" +
-                  " W1(" + DoubleToStr(zzRiskGain[1], 1) +")" +
-                  " MN1(" + DoubleToStr(zzRiskGain[0], 1) +")" ,
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state3",
-                  "LUCRO: H1(" + DoubleToStr(m_orderStopLossGain[4], 2) +")" +
-                  " H4(" + DoubleToStr(m_orderStopLossGain[3], 2) +")" +
-                  " D1(" + DoubleToStr(m_orderStopLossGain[2], 2) +")" +
-                  " W1(" + DoubleToStr(m_orderStopLossGain[1], 2) +")" +
-                  " MN1(" + DoubleToStr(m_orderStopLossGain[0], 2) +")", 
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state4",
-                  "TARGT: H1(" + DoubleToStr(m_orderTakeProfitGain[4], 2)+")" +
-                  " H4(" + DoubleToStr(m_orderTakeProfitGain[3], 2)+")" +
-                  " D1(" + DoubleToStr(m_orderTakeProfitGain[2], 2)+")" +
-                  " W1(" + DoubleToStr(m_orderTakeProfitGain[1], 2)+")" +
-                  " MN1(" + DoubleToStr(m_orderTakeProfitGain[0], 2)+")", 
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state5",
-                  "%: H1(" + DoubleToStr(m_orderPercent[4]*100,2)+")" +
-                  " H4(" + DoubleToStr(m_orderPercent[3]*100,2)+")" +
-                  " D1(" + DoubleToStr(m_orderPercent[2]*100,2)+")" +
-                  " W1(" + DoubleToStr(m_orderPercent[1]*100,2)+")" +
-                  " MN1(" + DoubleToStr(m_orderPercent[0]*100,2)+")", 
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state6",
-                  "D1: " + getStateName(m_agressiveState[2]) + " | " +
-                  "" + DoubleToStr(zzLots[2],2) + " | " +
-                  "" + DoubleToStr(zzStart[2],5) + " | " +
-                  "" + DoubleToStr(zzRiskGain[2], 0) + " | " +
-                  "" + zzTradeBlock[2] + ":" + m_orderActive[2] +" | " +
-                  "" + DoubleToStr(m_orderTakeProfitGain[2], 2) + " | " +
-                  "" + DoubleToStr(m_orderPercent[2]*100,2) + " | ", 
-                  7, "Arial", DarkOrange);
-
-    ObjectSetText("label_state7",
-                  "LT: M5(" + DoubleToStr(zzLots[5],2)+")" +
-                  " H1(" + DoubleToStr(zzLots[4],2)+")" +
-                  " H4(" + DoubleToStr(zzLots[3],2)+")" +
-                  " D1(" + DoubleToStr(zzLots[2],2)+")" +
-                  " W1(" + DoubleToStr(zzLots[1],2)+")" +
-                  " MN1(" + DoubleToStr(zzLots[0],2)+")", 
-                  7, "Arial", DarkOrange);
-*/
+    for (i = 0; i < MAX_PERIOD; i++) {
+        ObjectSetText("label_state"+i,
+                      "| "+wtsGetPeriodNameByIndex(i)+" | " + getStateName(m_normalState[i]) + "(" + getStateName(m_agressiveState[i]) + ") | " +
+                      "" + DoubleToStr(m_normalTradeRiskGain[i], 0) + "(" + DoubleToStr(zzRiskGain[i], 0) + ") | " +
+                      "" + m_orderOpenBarShift[i] + ":" + m_orderActive[i] + ":" + (!wtsNormalTradeValidDecision(i)) + "(" +(!validDecision(i)) + ") | " + 
+                      "" + DoubleToStr(m_orderTakeProfitGain[i], 2) + " | " +
+                      "" + DoubleToStr(m_orderPercent[i]*100,2) + " | ", 
+                      7, "Arial", DarkOrange);
+    }
+    
     checkOrdersOk();
     checkDecision();
     
@@ -879,8 +767,8 @@ int wtsGetPeriodByIndex(int index)
         case 2: ret = PERIOD_D1; break;
         case 3: ret = PERIOD_H4; break;
         case 4: ret = PERIOD_H1; break;
-        case 5: ret = PERIOD_M5; break;
-        case 6: ret = PERIOD_M15; break;
+        case 5: ret = PERIOD_M15; break;
+        case 6: ret = PERIOD_M5; break;
         case 7: ret = PERIOD_M5; break;
         case 8: ret = PERIOD_M1; break;
     }
@@ -898,8 +786,8 @@ string wtsGetPeriodNameByIndex(int index)
         case 2: ret = "D1"; break;
         case 3: ret = "H4"; break;
         case 4: ret = "H1"; break;
-        case 5: ret = "M5"; break;
-        case 6: ret = "M15"; break;
+        case 5: ret = "M15"; break;
+        case 6: ret = "M5"; break;
         case 7: ret = "M5"; break;
         case 8: ret = "M1"; break;
     }
@@ -933,9 +821,9 @@ int getIndexByPeriod(int period)
         case PERIOD_D1: ret = 2; break;
         case PERIOD_H4: ret = 3; break;
         case PERIOD_H1: ret = 4; break;
-        case PERIOD_M5: ret = 5; break;
         case PERIOD_M15: ret = 5; break;
-        case PERIOD_M5: ret = 5; break;
+        case PERIOD_M5: ret = 6; break;
+        //case PERIOD_M5: ret = 5; break;
         case PERIOD_M1: ret = 8; break;
     }
 
@@ -1001,14 +889,14 @@ bool wtsNormalTradeValidDecision(int index)
     RefreshRates();
     
     if (m_normalState[index] == ST_UP) {
-        if (m_normalTradeLots[index] > 0 && 
+        if (m_normalTradeLots[index] > 0.01 && 
             m_normalTradeRiskGain[index] >= WTS_NORMAL_TRADE_RISK_GAIN &&
             m_orderActive[index] == false) {
         
             decision = true;
         }
     } else if (m_normalState[index] == ST_DOWN) {
-        if (m_normalTradeLots[index] > 0 && 
+        if (m_normalTradeLots[index] > 0.01 && 
             m_normalTradeRiskGain[index] >= WTS_NORMAL_TRADE_RISK_GAIN &&
             m_orderActive[index] == false) {
             
@@ -1090,7 +978,7 @@ void wtsNormalTradeDecision(int index)
     int ticket = -1;
 
     RefreshRates();
-    if (wtsNormalTradeValidDecision(index) && NormalizeDouble(Bid, Digits-1) == m_normalTradeStart[index]) {
+    if (wtsNormalTradeValidDecision(index) && NormalizeDouble(Bid, Digits-1) == m_normalTradeStart[index] && m_normalState[index] == ST_UP) {
         RefreshRates();
         ticket = OrderSend(Symbol(), OP_BUY, m_normalTradeLots[index], Ask, 3, 
                            Bid - (m_normalTradeRisk[index] * Point), m_normalTradeTakeProfit[index], 
@@ -1101,7 +989,7 @@ void wtsNormalTradeDecision(int index)
             Print("error(",err,"): ",ErrorDescription(err));
             Sleep(1000);
         } 
-    } else if (wtsNormalTradeValidDecision(index) && NormalizeDouble(Ask, Digits-1) == m_normalTradeStart[index]) {
+    } else if (wtsNormalTradeValidDecision(index) && NormalizeDouble(Ask, Digits-1) == m_normalTradeStart[index] && m_normalState[index] == ST_DOWN) {
         RefreshRates();
         ticket = OrderSend(Symbol(), OP_SELL, m_normalTradeLots[index], Bid, 3, 
                            Ask + (m_normalTradeRisk[index] * Point), m_normalTradeTakeProfit[index], 
@@ -1311,13 +1199,12 @@ void checkOrdersOk()
     double riskGain = 0;
     double patrimonio = 0;
     double newStop = 0;
-    double lucro003 = 0;
-    double lucro005 = 0;
-    double lucro008 = 0;
-    double lucro013 = 0;
-    double lucro021 = 0;
-    double lucro034 = 0;
-    double lucro055 = 0;
+    double protection = 0;
+    double orderParcialGain = 0;
+    double orderGain = 0;
+    double orderPercent = 0;
+    double orderPercent70 = 0;
+    double orderPercent85 = 0;
     double spread = MarketInfo(Symbol(), MODE_SPREAD);
     
     for (i = 0; i < MAX_PERIOD; i++) {
@@ -1351,7 +1238,7 @@ void checkOrdersOk()
             RefreshRates();
       
             str_open = StringFind(OrderComment(), "[", 0);
-            
+
             if (str_open < 0) {
                 if ((OrderType() == OP_BUY && OrderOpenPrice() > OrderStopLoss()) ||
                     (OrderType() == OP_SELL && OrderOpenPrice() < OrderStopLoss())) {
@@ -1359,6 +1246,38 @@ void checkOrdersOk()
                         Sleep(1000);
                     }
                 }
+                
+                if (OrderType() == OP_BUY) {
+                    orderPercent70 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.70, Digits-1);
+                    orderPercent85 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.85, Digits-1);
+                    
+                    if (NormalizeDouble(Bid, Digits-1) >= orderPercent85 && orderPercent70 > OrderStopLoss()) {
+                        if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent70, OrderTakeProfit(), 0, Yellow)) {
+                            Sleep(1000);
+                        }
+                    }
+                    
+                    orderParcialGain = (orderPercent70 - OrderOpenPrice()) / Point * OrderLots();
+                    orderGain = (OrderTakeProfit() - OrderOpenPrice()) / Point * OrderLots();
+                    orderPercent = (Bid - OrderOpenPrice()) / (OrderTakeProfit() - OrderOpenPrice()) * 100;
+                } else if (OrderType() == OP_SELL) {
+                    orderPercent70 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.70, Digits-1);
+                    orderPercent85 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.85, Digits-1);
+                    
+                    if (NormalizeDouble(Ask, Digits-1) <= orderPercent85 && orderPercent70 < OrderStopLoss()) {
+                        if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent70, OrderTakeProfit(), 0, Yellow)) {
+                            Sleep(1000);
+                        }
+                    }
+                    
+                    orderParcialGain = (OrderOpenPrice() - orderPercent70) / Point * OrderLots();
+                    orderGain = (OrderOpenPrice() - OrderTakeProfit()) / Point * OrderLots();
+                    orderPercent = (OrderOpenPrice() - Ask) / (OrderOpenPrice() - OrderTakeProfit()) * 100;
+                }
+                
+                wtsPrintLine("prot start"+OrderTicket(), orderPercent85, Pink, "prot start");
+                wtsPrintLine("prot stop"+OrderTicket(), orderPercent70, Pink, "prot stop: $"+DoubleToStr(orderParcialGain, 2)+" ($"+DoubleToStr(orderGain, 2)+") "+DoubleToStr(orderPercent, 2)+"%");
+                
             } else {
                 str_open += 1;
                 str_close = StringFind(OrderComment(), "]", str_open);
@@ -1406,20 +1325,35 @@ void checkOrdersOk()
                     m_orderTakeProfitGain[index] = ((m_orderTakeProfit[index] - m_orderOpenPrice[index]) / Point) * m_orderLots[index];
 
                     m_orderPercent[index] = (Bid - m_orderOpenPrice[index]) / (m_orderTakeProfit[index] - m_orderOpenPrice[index]);
-                
+                    orderPercent = (Bid - OrderOpenPrice()) / (OrderTakeProfit() - OrderOpenPrice()) * 100;
+                    
                     stopLoss = wtsStopLossCalc(index, OP_BUY);
                 
                     candlePrevClose = NormalizeDouble(iClose(Symbol(), period, 1), Digits-1);
                 
                     threshold = NormalizeDouble((iLow(Symbol(), period, 1) - (m_candleShadowMed[index]) * Point), 5);
                 
-                    if ((OrderStopLoss() < OrderOpenPrice()) && ((NormalizeDouble(Bid, Digits-1) == NormalizeDouble((OrderOpenPrice()-OrderStopLoss()) + OrderOpenPrice(), Digits-1)))) {
-                        if (!OrderClose(OrderTicket(), NormalizeDouble(OrderLots()/2, 2), NormalizeDouble(Bid, Digits-1), 3, Blue)) {
-                            Sleep(1000);
+                    protection = NormalizeDouble((OrderOpenPrice()-OrderStopLoss()) + OrderOpenPrice(), Digits-1);
+                    
+                    orderParcialGain = (protection - OrderOpenPrice()) / Point * NormalizeDouble(OrderLots()/2, 2);
+                    orderGain = (OrderTakeProfit() - OrderOpenPrice()) / Point * NormalizeDouble(OrderLots()/2, 2);
+                    
+                    wtsPrintLine("protection"+index, protection, Pink, "protection: $"+DoubleToStr(orderParcialGain, 2)+" ($"+DoubleToStr(orderGain, 2)+") "+DoubleToStr(orderPercent, 2)+"%");
+                
+                    if ((OrderStopLoss() < OrderOpenPrice()) && ((NormalizeDouble(Bid, Digits-1) >= protection))) {
+                    
+                        if (OrderLots() > 0.01) {
+                            if (!OrderClose(OrderTicket(), NormalizeDouble(OrderLots()/2, 2), NormalizeDouble(Bid, Digits-1), 3, Blue)) {
+                                Sleep(1000);
+                            } else {
+                                if (!OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice(), OrderTakeProfit(), 0, Blue)) {
+                                    Sleep(1000);
+                                }                    
+                            }
                         } else {
                             if (!OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice(), OrderTakeProfit(), 0, Blue)) {
-                                Sleep(1000);
-                            }                    
+                                    Sleep(1000);
+                            }
                         }
                     }
 /*                
@@ -1455,20 +1389,35 @@ void checkOrdersOk()
 
                     m_orderActive[index] = true;
                     m_orderPercent[index] = (m_orderOpenPrice[index] - Ask) / (m_orderOpenPrice[index] - m_orderTakeProfit[index]);
-
+                    orderPercent = (OrderOpenPrice() - Ask) / (OrderOpenPrice() - OrderTakeProfit()) * 100;
+                    
                     stopLoss = wtsStopLossCalc(index, OP_SELL);
     
                     candlePrevClose = NormalizeDouble(iClose(Symbol(), period, 1), Digits-1);
                 
                     threshold = NormalizeDouble((iHigh(Symbol(), period, 1) + (m_candleShadowMed[index] + spread) * Point), 5);
 
-                    if ((OrderStopLoss() > OrderOpenPrice()) && ((NormalizeDouble(Ask, Digits-1) == NormalizeDouble(OrderOpenPrice() - (OrderStopLoss()-OrderOpenPrice()), Digits-1)))) {
-                        if (!OrderClose(OrderTicket(), NormalizeDouble(OrderLots()/2, 2), NormalizeDouble(Ask, Digits-1), 3, Blue)) {
-                            Sleep(1000);
+                    protection = NormalizeDouble(OrderOpenPrice() - (OrderStopLoss()-OrderOpenPrice()), Digits-1);
+                    
+                    orderParcialGain = (OrderOpenPrice() - protection) / Point * NormalizeDouble(OrderLots()/2, 2);
+                    orderGain = (OrderOpenPrice() - OrderTakeProfit()) / Point * NormalizeDouble(OrderLots()/2, 2);
+                    
+                    wtsPrintLine("protection"+index, protection, Pink, "protection: $"+DoubleToStr(orderParcialGain, 2)+" ($"+DoubleToStr(orderGain, 2)+") "+DoubleToStr(orderPercent, 2)+"%");
+
+                    if ((OrderStopLoss() > OrderOpenPrice()) && ((NormalizeDouble(Ask, Digits-1) <= protection))) {
+                    
+                        if (OrderLots() > 0.01) {
+                            if (!OrderClose(OrderTicket(), NormalizeDouble(OrderLots()/2, 2), NormalizeDouble(Ask, Digits-1), 3, Blue)) {
+                                Sleep(1000);
+                            } else {
+                                if (!OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice(), OrderTakeProfit(), 0, Blue)) {
+                                    Sleep(1000);
+                                }                    
+                            }
                         } else {
                             if (!OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice(), OrderTakeProfit(), 0, Blue)) {
                                 Sleep(1000);
-                            }                    
+                            }   
                         }
                     } 
 /*                
@@ -1619,7 +1568,7 @@ int wtsNormalTrade(int index)
                 }
             }
             
-            if ((wtsCandleIsHigh(period, m_candleLowestRetration[index]) || wtsCandleIsHigh(period, m_candleLowestRetration[index]-1)) && candleHighestAfteLowest == m_candleLowestRetration[index] && m_candleLowestRetration[index] > 0) {
+            if ((wtsCandleIsHigh(period, m_candleLowestRetration[index]) || wtsCandleIsHigh(period, m_candleLowestRetration[index]-1)) && ((candleHighestAfteLowest == m_candleLowestRetration[index]) || (candleHighestAfteLowest == 0 /*&& wtsCandleIsHigh(period, 0)*/)) && m_candleLowestRetration[index] > 0) {
                 
                 
                 if ((candleHigh > m_candleFibo60[index] && candleLow < m_candleFibo60[index]) || 
@@ -1661,13 +1610,14 @@ int wtsNormalTrade(int index)
                         m_normalTradeRiskGain[index] = 0;
                     }
                    
-                    comment = "WTS_" + wtsGetPeriodNameByIndex(index) +": " +
+                    comment = "" + wtsGetPeriodNameByIndex(index) +": " +
                               "" + DoubleToStr(m_normalTradeLots[index], 2) +" | "+
                               "$" + DoubleToStr(loss, 2) +" | "+
                               "$" + DoubleToStr(gain, 2) +" | "+
                               "" + DoubleToStr(m_normalTradeRiskGain[index], 0) +" | "+
                               "" + wtsNormalTradeValidDecision(index) +" | "+
-                              "" + m_normalTradeType[index];
+                              "" + m_normalTradeRisk[index] +" | "+
+                              "" + DoubleToStr(Bid, Digits-1);
 
                 } else {
                     m_normalState[index] = ST_UNDEF;
@@ -1698,7 +1648,7 @@ int wtsNormalTrade(int index)
                 }
             }
 
-            if ((wtsCandleIsLow(period, m_candleHighestRetration[index]) || wtsCandleIsLow(period, m_candleHighestRetration[index]-1)) && candleLowestAfteHighest == m_candleHighestRetration[index] && m_candleHighestRetration[index] > 0) {
+            if ((wtsCandleIsLow(period, m_candleHighestRetration[index]) || wtsCandleIsLow(period, m_candleHighestRetration[index]-1)) && ((candleLowestAfteHighest == m_candleHighestRetration[index]) || (candleLowestAfteHighest == 0/* && wtsCandleIsLow(period, 0)*/)) && m_candleHighestRetration[index] > 0) {
 
                 if ((candleHigh > m_candleFibo60[index] && candleLow < m_candleFibo60[index]) || 
                     (candleHigh > m_candleFibo50[index] && candleLow < m_candleFibo50[index]) ||
@@ -1729,13 +1679,14 @@ int wtsNormalTrade(int index)
                         m_normalTradeRiskGain[index] = gain / loss;
                     }
                    
-                    comment = "WTS_" + wtsGetPeriodNameByIndex(index) +": " +
+                    comment = "" + wtsGetPeriodNameByIndex(index) +": " +
                               "" + DoubleToStr(m_normalTradeLots[index], 2) +" | "+
                               "$" + DoubleToStr(loss, 2) +" | "+
                               "$" + DoubleToStr(gain, 2) +" | "+
                               "" + DoubleToStr(m_normalTradeRiskGain[index], 0) +" | "+
                               "" + wtsNormalTradeValidDecision(index) +" | "+
-                              "" + m_normalTradeType[index];
+                              "" + m_normalTradeRisk[index] +" | "+
+                              "" + DoubleToStr(Ask, Digits-1);
                               
                 } else {
                     m_normalState[index] = ST_UNDEF;
@@ -1752,8 +1703,8 @@ int wtsNormalTrade(int index)
     
     m_normalTradeRiskGain[index] = NormalizeDouble(m_normalTradeRiskGain[index], 0);
     
-    wtsPrintLine("wts_normalTradeStart", index, m_normalTradeStart[index], Green, comment);
-    wtsPrintLine("wts_normalTradeStop", index, m_normalTradeStop[index], Red, "");
+    wtsPrintLineTrade("wts_normalTradeStart", index, m_normalTradeStart[index], Green, comment);
+    wtsPrintLineTrade("wts_normalTradeStop", index, m_normalTradeStop[index], Red, "");
 
     if (m_normalState[index] == ST_UNDEF || m_normalTradeRiskGain[index] < WTS_NORMAL_TRADE_RISK_GAIN) {
         m_normalTradeStart[index] = 0;
@@ -1813,7 +1764,7 @@ double wtsStopLossCalc(int index, int op_type)
         range += 0.1;
     }
 
-    wtsPrintProtectionLine(index);
+    //wtsPrintProtectionLine(index);
     
     return (stopLoss);
 }
@@ -1890,7 +1841,20 @@ int wtsPrintProtectionLine(int index)
     return (0);
 }
 
-int wtsPrintLine(string name, int index, double value, int colored, string comment)
+int wtsPrintLine(string name, double value, int colored, string comment)
+{
+    ObjectDelete(name);
+
+    if (value > 0 ) {
+        ObjectCreate(name, OBJ_HLINE, 0, 0, value);
+        ObjectSet(name, OBJPROP_COLOR, colored); 
+        ObjectSet(name, OBJPROP_STYLE, 2);
+        ObjectSetText(name, comment, 7, "Arial", White);
+    }
+    return (0);
+}
+
+int wtsPrintLineTrade(string name, int index, double value, int colored, string comment)
 {
     int period = wtsGetPeriodByIndex(index);
     
@@ -1968,6 +1932,7 @@ int wtsGetPeriodPrev(int period)
         case PERIOD_D1:  prev = PERIOD_H4; break;
         case PERIOD_H4:  prev = PERIOD_H1; break;
         case PERIOD_H1:  prev = PERIOD_M30; break;
+        case PERIOD_M15:  prev = PERIOD_M5; break;
         case PERIOD_M5:  prev = PERIOD_M5; break;
     }
     
