@@ -13,10 +13,12 @@
 #define ST_CONG     1
 #define ST_UP       2
 #define ST_DOWN     3
+
 //#define ST_NORISK   4
 #define MIN_SWAP    -5.0
 
-#define MAX_PERIOD      5
+#define MAX_PERIOD      7
+
 #define MIN_RISK_GAIN   10.0
 
 #define TOTAL_BARS  500
@@ -36,6 +38,10 @@ static double m_candleFibo60[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static int    m_candleHighestRetration[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static int    m_candleLastBarShift[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static int    m_candleLowestRetration[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static int    m_candleHighestAfterLowest[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static int    m_candleLowestAfterHighest[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+
+
 static double m_candleTop[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleTopTime[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zzTopTimeFrame[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
@@ -105,7 +111,7 @@ int init()
     ObjectSet("label_start", OBJPROP_YDISTANCE, 15);// Y coordinate
 
 //    for (i = 0; i < MAX_PERIOD; i++) {
-    for (i = 0; i < 0; i++) {
+    for (i = 0; i < 1; i++) {
         ObjectDelete("top_"+wtsGetPeriodByIndex(i));
         ObjectDelete("bottom_"+wtsGetPeriodByIndex(i));    
 
@@ -133,6 +139,9 @@ int deinit()
 int start()
 {
     int i;
+    int j;
+    int retration[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+    int afterRetration[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
     bool aux;
     string desc;
     string comment = "";
@@ -148,8 +157,8 @@ int start()
     wtsCalcZigzag("D1", PERIOD_D1, 2);
     wtsCalcZigzag("H4", PERIOD_H4, 3);
     wtsCalcZigzag("H1", PERIOD_H1, 4);
-    //wtsCalcZigzag("M15", PERIOD_M15, 5);
-    //wtsCalcZigzag("M5", PERIOD_M5, 6);
+    wtsCalcZigzag("M15", PERIOD_M15, 5);
+    wtsCalcZigzag("M5", PERIOD_M5, 6);
     
     for (i = 0; i < MAX_PERIOD; i++) {
         ObjectDelete("zz33Start_"+wtsGetPeriodByIndex(i));
@@ -363,15 +372,20 @@ int start()
                   "Leg("+DoubleToStr((m_candleTop[getIndexByPeriod(Period())] - m_candleBottom[getIndexByPeriod(Period())]) / Point, 0)+") ",
                   7, "Arial", DarkOrange);
 
-    for (i = 0; i < MAX_PERIOD; i++) {
-        ObjectSetText("label_state"+i,
-                      "| "+wtsGetPeriodNameByIndex(i)+" | " + getStateName(m_normalState[i]) + "(" + getStateName(m_agressiveState[i]) + ") | " +
-                      "" + DoubleToStr(m_normalTradeRiskGain[i], 0) + "(" + DoubleToStr(zzRiskGain[i], 0) + ") | " +
-                      "" + m_orderOpenBarShift[i] + ":" + m_orderActive[i] + ":" + (!wtsNormalTradeValidDecision(i)) + "(" +(!validDecision(i)) + ") | " + 
-                      "" + DoubleToStr(m_orderTakeProfitGain[i], 2) + " | " +
-                      "" + DoubleToStr(m_orderPercent[i]*100,2) + " | ", 
-                      7, "Arial", DarkOrange);
+    for (i = 0; i < 1; i++) {
+//        ObjectSetText("label_state"+i,
+//                      "| "+wtsGetPeriodNameByIndex(i)+" | " + getStateName(m_normalState[i]) + "(" + getStateName(m_agressiveState[i]) + ") | " +
+                      //"" + DoubleToStr(m_normalTradeRiskGain[i], 0) + "(" + DoubleToStr(zzRiskGain[i], 0) + ") | " +
+                      //"" + m_orderOpenBarShift[i] + ":" + m_orderActive[i] + ":" + (!wtsNormalTradeValidDecision(i)) + "(" +(!validDecision(i)) + ") | " + 
+                      //"" + DoubleToStr(m_orderTakeProfitGain[i], 2) + " | " +
+                      //"" + DoubleToStr(m_orderPercent[i]*100,2) + " | ", 
+                      //7, "Arial", DarkOrange);
+
     }
+    
+    ObjectSetText("label_state0",
+                  "Retration: up("+m_candleLowestRetration[getIndexByPeriod(Period())]+":"+m_candleHighestAfterLowest[getIndexByPeriod(Period())]+") down("+m_candleHighestRetration[getIndexByPeriod(Period())]+":"+m_candleLowestAfterHighest[getIndexByPeriod(Period())]+")",
+                  7, "Arial", DarkOrange);
     
     checkOrdersOk();
     checkDecision();
@@ -889,14 +903,14 @@ bool wtsNormalTradeValidDecision(int index)
     RefreshRates();
     
     if (m_normalState[index] == ST_UP) {
-        if (m_normalTradeLots[index] > 0.01 && 
+        if (m_normalTradeLots[index] > 0 && 
             m_normalTradeRiskGain[index] >= WTS_NORMAL_TRADE_RISK_GAIN &&
             m_orderActive[index] == false) {
         
             decision = true;
         }
     } else if (m_normalState[index] == ST_DOWN) {
-        if (m_normalTradeLots[index] > 0.01 && 
+        if (m_normalTradeLots[index] > 0 && 
             m_normalTradeRiskGain[index] >= WTS_NORMAL_TRADE_RISK_GAIN &&
             m_orderActive[index] == false) {
             
@@ -1203,7 +1217,7 @@ void checkOrdersOk()
     double orderParcialGain = 0;
     double orderGain = 0;
     double orderPercent = 0;
-    double orderPercent70 = 0;
+    double orderPercent55 = 0;
     double orderPercent85 = 0;
     double spread = MarketInfo(Symbol(), MODE_SPREAD);
     
@@ -1225,6 +1239,11 @@ void checkOrdersOk()
         m_orderTakeProfit[i] = 0;
         m_orderTakeProfitGain[i] = 0;
         m_orderTicket[i] = 0;
+
+        m_candleHighestRetration[i] = 0;
+        m_candleLowestAfterHighest[i] = 0;
+        m_candleLowestRetration[i] = 0;
+        m_candleHighestAfterLowest[i] = 0;
         
         ObjectDelete(WTS_PROTECTION_VALUE + wtsGetPeriodByIndex(i) + "");
     }
@@ -1248,35 +1267,35 @@ void checkOrdersOk()
                 }
                 
                 if (OrderType() == OP_BUY) {
-                    orderPercent70 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.70, Digits-1);
+                    orderPercent55 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.55, Digits-1);
                     orderPercent85 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.85, Digits-1);
                     
-                    if (NormalizeDouble(Bid, Digits-1) >= orderPercent85 && orderPercent70 > OrderStopLoss()) {
-                        if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent70, OrderTakeProfit(), 0, Yellow)) {
+                    if (NormalizeDouble(Bid, Digits-1) >= orderPercent85 && orderPercent55 > OrderStopLoss()) {
+                        if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
                             Sleep(1000);
                         }
                     }
                     
-                    orderParcialGain = (orderPercent70 - OrderOpenPrice()) / Point * OrderLots();
+                    orderParcialGain = (orderPercent55 - OrderOpenPrice()) / Point * OrderLots();
                     orderGain = (OrderTakeProfit() - OrderOpenPrice()) / Point * OrderLots();
                     orderPercent = (Bid - OrderOpenPrice()) / (OrderTakeProfit() - OrderOpenPrice()) * 100;
                 } else if (OrderType() == OP_SELL) {
-                    orderPercent70 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.70, Digits-1);
+                    orderPercent55 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.55, Digits-1);
                     orderPercent85 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.85, Digits-1);
                     
-                    if (NormalizeDouble(Ask, Digits-1) <= orderPercent85 && orderPercent70 < OrderStopLoss()) {
-                        if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent70, OrderTakeProfit(), 0, Yellow)) {
+                    if (NormalizeDouble(Ask, Digits-1) <= orderPercent85 && orderPercent55 < OrderStopLoss()) {
+                        if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
                             Sleep(1000);
                         }
                     }
                     
-                    orderParcialGain = (OrderOpenPrice() - orderPercent70) / Point * OrderLots();
+                    orderParcialGain = (OrderOpenPrice() - orderPercent55) / Point * OrderLots();
                     orderGain = (OrderOpenPrice() - OrderTakeProfit()) / Point * OrderLots();
                     orderPercent = (OrderOpenPrice() - Ask) / (OrderOpenPrice() - OrderTakeProfit()) * 100;
                 }
                 
                 wtsPrintLine("prot start"+OrderTicket(), orderPercent85, Pink, "prot start");
-                wtsPrintLine("prot stop"+OrderTicket(), orderPercent70, Pink, "prot stop: $"+DoubleToStr(orderParcialGain, 2)+" ($"+DoubleToStr(orderGain, 2)+") "+DoubleToStr(orderPercent, 2)+"%");
+                wtsPrintLine("prot stop"+OrderTicket(), orderPercent55, Pink, "prot stop: $"+DoubleToStr(orderParcialGain, 2)+" ($"+DoubleToStr(orderGain, 2)+") "+DoubleToStr(orderPercent, 2)+"%");
                 
             } else {
                 str_open += 1;
@@ -1355,6 +1374,21 @@ void checkOrdersOk()
                                     Sleep(1000);
                             }
                         }
+                    } else if (OrderStopLoss() == OrderOpenPrice() && OrderLots() == 0.01) {
+                        orderPercent55 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.55, Digits-1);
+                        orderPercent85 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.85, Digits-1);
+                    
+                        if (NormalizeDouble(Bid, Digits-1) >= orderPercent85 && orderPercent55 > OrderStopLoss()) {
+                            if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
+                                Sleep(1000);
+                            }
+                        }
+                        
+                        orderParcialGain = (orderPercent55 - OrderOpenPrice()) / Point * OrderLots();
+                        orderGain = (OrderTakeProfit() - OrderOpenPrice()) / Point * OrderLots();
+                        orderPercent = (Bid - OrderOpenPrice()) / (OrderTakeProfit() - OrderOpenPrice()) * 100;
+                        wtsPrintLine("prot start"+OrderTicket(), orderPercent85, Pink, "prot start");
+                        wtsPrintLine("prot stop"+OrderTicket(), orderPercent55, Pink, "prot stop: $"+DoubleToStr(orderParcialGain, 2)+" ($"+DoubleToStr(orderGain, 2)+") "+DoubleToStr(orderPercent, 2)+"%");
                     }
 /*                
                 if (NormalizeDouble(Bid, Digits-1) > m_orderProtectionValuePrev[index]) {
@@ -1419,7 +1453,22 @@ void checkOrdersOk()
                                 Sleep(1000);
                             }   
                         }
-                    } 
+                    } else if (OrderStopLoss() == OrderOpenPrice() && OrderLots() == 0.01) {
+                        orderPercent55 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.55, Digits-1);
+                        orderPercent85 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.85, Digits-1);
+                    
+                        if (NormalizeDouble(Ask, Digits-1) <= orderPercent85 && orderPercent55 < OrderStopLoss()) {
+                            if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
+                                Sleep(1000);
+                            }
+                        }
+                    
+                        orderParcialGain = (OrderOpenPrice() - orderPercent55) / Point * OrderLots();
+                        orderGain = (OrderOpenPrice() - OrderTakeProfit()) / Point * OrderLots();
+                        orderPercent = (OrderOpenPrice() - Ask) / (OrderOpenPrice() - OrderTakeProfit()) * 100;
+                        wtsPrintLine("prot start"+OrderTicket(), orderPercent85, Pink, "prot start");
+                        wtsPrintLine("prot stop"+OrderTicket(), orderPercent55, Pink, "prot stop: $"+DoubleToStr(orderParcialGain, 2)+" ($"+DoubleToStr(orderGain, 2)+") "+DoubleToStr(orderPercent, 2)+"%");
+                    }
 /*                
                 if (NormalizeDouble(Ask, Digits-1) < m_orderProtectionValuePrev[index]) {
                     m_orderProtectionValuePrev[index] = m_orderProtectionValue[index];
@@ -1531,9 +1580,10 @@ bool wtsCandleIsLow(int period, int shift)
 int wtsNormalTrade(int index)
 {
     int period = wtsGetPeriodByIndex(index);
-    int candleHighestAfteLowest = 0;
-    int candleLowestAfteHighest = 0;
     int spread = MarketInfo(Symbol(), MODE_SPREAD);
+    int candleStop = 0;
+    int candleStart = 0;
+    bool tradeOk = false;
     double gain = 0;
     double loss = 0;
     double candleHigh = 0;
@@ -1550,38 +1600,57 @@ int wtsNormalTrade(int index)
         case ST_UP:
             m_candleLowestRetration[index] = iLowest(Symbol(), period, MODE_LOW, m_candleLastBarShift[index]);
 
-            candleHighestAfteLowest = iHighest(Symbol(), period, MODE_HIGH, m_candleLowestRetration[index]+1);
+            m_candleHighestAfterLowest[index] = iHighest(Symbol(), period, MODE_HIGH, m_candleLowestRetration[index]+1);
 
             candleLow = iLow(Symbol(), period, m_candleLowestRetration[index]);
             candleHigh = iHigh(Symbol(), period, m_candleLowestRetration[index]);
             
-            if (candleHighestAfteLowest != m_candleLowestRetration[index] && iHigh(Symbol(), period, candleHighestAfteLowest) < (candleHigh + m_candleShadowMed[index]*Point)) {
-                candleHighestAfteLowest = m_candleLowestRetration[index];
+            if (m_candleHighestAfterLowest[index] == m_candleLowestRetration[index]) {
+                tradeOk = true;
+            } else if (m_candleHighestAfterLowest[index] != m_candleLowestRetration[index] && iHigh(Symbol(), period, m_candleHighestAfterLowest[index]) < (candleHigh + m_candleShadowMed[index]*Point)) {
+                tradeOk = true;
             }
             
+            candleStop = m_candleLowestRetration[index];
+            candleStart = m_candleHighestAfterLowest[index];
+            
+            m_normalTradeType[index] = 99;
 
-            if (m_candleLowestRetration[index] > 1 && wtsCandleIsHigh(period, m_candleLowestRetration[index]-1)) {
-                candleHighNext = iHigh(Symbol(), period, m_candleLowestRetration[index]-1);
+            if (candleStop > 2 && wtsCandleIsHigh(period, 1)) {
+                candleHighNext = iHigh(Symbol(), period, 1);
+            
+                //if (candleHighNext < candleHigh) {
+                    candleHigh = candleHighNext;
+                    m_normalTradeType[index] = 77;
+                    tradeOk = true;
+                //}
+            } else if (candleStop > 1 && wtsCandleIsHigh(period, candleStop-1)) {
+                candleHighNext = iHigh(Symbol(), period, candleStop-1);
             
                 if (candleHighNext < candleHigh) {
                     candleHigh = candleHighNext;
+                    m_normalTradeType[index] = 88;
                 }
             }
+
+
             
-            if ((wtsCandleIsHigh(period, m_candleLowestRetration[index]) || wtsCandleIsHigh(period, m_candleLowestRetration[index]-1)) && ((candleHighestAfteLowest == m_candleLowestRetration[index]) || (candleHighestAfteLowest == 0 /*&& wtsCandleIsHigh(period, 0)*/)) && m_candleLowestRetration[index] > 0) {
+            if (((wtsCandleIsHigh(period, candleStop) && candleStop > 0) || 
+                 (wtsCandleIsHigh(period, candleStop-1) && candleStop > 1) ||
+                 (wtsCandleIsHigh(period, 1) && candleStop > 2)) && ((tradeOk == true) || (candleStart == 0 /*&& wtsCandleIsHigh(period, 0)*/))) {
                 
                 
-                if ((candleHigh > m_candleFibo60[index] && candleLow < m_candleFibo60[index]) || 
-                    (candleHigh > m_candleFibo50[index] && candleLow < m_candleFibo50[index]) ||
-                    (candleHigh > m_candleFibo33[index] && candleLow < m_candleFibo33[index])) {
+                if ((candleHigh >= m_candleFibo60[index] && candleLow <= m_candleFibo60[index]) || 
+                    (candleHigh >= m_candleFibo50[index] && candleLow <= m_candleFibo50[index]) ||
+                    (candleHigh >= m_candleFibo33[index] && candleLow <= m_candleFibo33[index])) {
 
                     candleHighOpt = iHigh(Symbol(), wtsGetPeriodPrev(period), 1);
                     
                     if ((candleHighOpt + m_candleShadowMed[index]/2*Point) >= Bid && wtsCandleIsHigh(wtsGetPeriodPrev(period), 1) && candleHighOpt < candleHigh) {
                         //candleHigh = candleHighOpt;
-                        m_normalTradeType[index] = 88;
+                        //m_normalTradeType[index] = 88;
                     } else {
-                        m_normalTradeType[index] = 99;
+                        //m_normalTradeType[index] = 99;
                     }
 
                     m_normalTradeStart[index] = NormalizeDouble(candleHigh + m_candleShadowMed[index]/2*Point, Digits-1);
@@ -1617,13 +1686,14 @@ int wtsNormalTrade(int index)
                               "" + DoubleToStr(m_normalTradeRiskGain[index], 0) +" | "+
                               "" + wtsNormalTradeValidDecision(index) +" | "+
                               "" + m_normalTradeRisk[index] +" | "+
-                              "" + DoubleToStr(Bid, Digits-1);
+                              "" + m_normalTradeType[index];
 
                 } else {
-                    m_normalState[index] = ST_UNDEF;
+                    //m_normalState[index] = ST_UNDEF;
+                    //m_candleLowestRetration[index] = -1;
                 }
             } else {
-                m_normalState[index] = ST_UNDEF;
+                //m_normalState[index] = ST_UNDEF;
             }
 
             break;
@@ -1631,24 +1701,42 @@ int wtsNormalTrade(int index)
         case ST_DOWN:
             m_candleHighestRetration[index] = iHighest(Symbol(), period, MODE_HIGH, m_candleLastBarShift[index]);
             
-            candleLowestAfteHighest = iLowest(Symbol(), period, MODE_LOW, m_candleHighestRetration[index] + 1);
+            m_candleLowestAfterHighest[index] = iLowest(Symbol(), period, MODE_LOW, m_candleHighestRetration[index]+1);
 
             candleLow = iLow(Symbol(), period, m_candleHighestRetration[index]);
             candleHigh = iHigh(Symbol(), period, m_candleHighestRetration[index]);
             
-            if (candleLowestAfteHighest != m_candleHighestRetration[index] && iLow(Symbol(), period, candleLowestAfteHighest) > (candleLow - m_candleShadowMed[index]*Point)) {
-                candleLowestAfteHighest = m_candleHighestRetration[index];
+            if (m_candleLowestAfterHighest[index] == m_candleHighestRetration[index]) {
+                tradeOk = true;
+            } else if (m_candleLowestAfterHighest[index] != m_candleHighestRetration[index] && iLow(Symbol(), period, m_candleLowestAfterHighest[index]) > (candleLow - m_candleShadowMed[index]*Point)) {
+                tradeOk = true;
             }
 
-            if (m_candleHighestRetration[index] > 1 && wtsCandleIsLow(period, m_candleHighestRetration[index]-1)) {
-                candleLowNext = iLow(Symbol(), period, m_candleHighestRetration[index]-1);
+            candleStop = m_candleHighestRetration[index];
+            candleStart = m_candleLowestAfterHighest[index];
+            
+            m_normalTradeType[index] = 99;
+
+            if (candleStop > 2 && wtsCandleIsLow(period, 1)) {
+                candleLowNext = iLow(Symbol(), period, 1);
+            
+                //if (candleLowNext > candleLow) {
+                    candleLow = candleLowNext;
+                    m_normalTradeType[index] = 77;
+                    tradeOk = true;
+                //}
+            } else if (candleStop > 1 && wtsCandleIsLow(period, candleStop-1)) {
+                candleLowNext = iLow(Symbol(), period, candleStop-1);
             
                 if (candleLowNext > candleLow) {
                     candleLow = candleLowNext;
+                    m_normalTradeType[index] = 88;
                 }
             }
 
-            if ((wtsCandleIsLow(period, m_candleHighestRetration[index]) || wtsCandleIsLow(period, m_candleHighestRetration[index]-1)) && ((candleLowestAfteHighest == m_candleHighestRetration[index]) || (candleLowestAfteHighest == 0/* && wtsCandleIsLow(period, 0)*/)) && m_candleHighestRetration[index] > 0) {
+            if (((wtsCandleIsLow(period, candleStop) && candleStop > 0) || 
+                 (wtsCandleIsLow(period, candleStop-1) && candleStop > 1) ||
+                 (wtsCandleIsLow(period, 1) && candleStop > 2)) && ((tradeOk == true) || (candleStart == 0/* && wtsCandleIsLow(period, 0)*/))) {
 
                 if ((candleHigh > m_candleFibo60[index] && candleLow < m_candleFibo60[index]) || 
                     (candleHigh > m_candleFibo50[index] && candleLow < m_candleFibo50[index]) ||
@@ -1658,10 +1746,11 @@ int wtsNormalTrade(int index)
                     
                     if ((candleLowOpt - (m_candleShadowMed[index]/2 - spread)*Point) <= Ask && wtsCandleIsLow(wtsGetPeriodPrev(period), 1) && candleLowOpt > candleLow) {
                         //candleLow = candleLowOpt;
-                        m_normalTradeType[index] = 88;
+                        //m_normalTradeType[index] = 88;
                     } else {
-                        m_normalTradeType[index] = 99;
+                        //m_normalTradeType[index] = 99;
                     }
+                    //m_normalTradeType[index] = 99;
 
                     m_normalTradeStop[index] = NormalizeDouble(candleHigh + (m_candleShadowMed[index]/2 + spread)*Point, Digits-1);
                     m_normalTradeStart[index] = NormalizeDouble(candleLow - (m_candleShadowMed[index]/2 - spread)*Point, Digits-1);
@@ -1686,13 +1775,13 @@ int wtsNormalTrade(int index)
                               "" + DoubleToStr(m_normalTradeRiskGain[index], 0) +" | "+
                               "" + wtsNormalTradeValidDecision(index) +" | "+
                               "" + m_normalTradeRisk[index] +" | "+
-                              "" + DoubleToStr(Ask, Digits-1);
+                              "" + m_normalTradeType[index];
                               
                 } else {
-                    m_normalState[index] = ST_UNDEF;
+                    //m_normalState[index] = ST_UNDEF;
                 }
             } else {
-                m_normalState[index] = ST_UNDEF;
+                //m_normalState[index] = ST_UNDEF;
             }
             
             break;
