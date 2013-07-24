@@ -49,7 +49,7 @@ static double zzTopTimeFrame[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleTopBottomCount[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_agressiveState[MAX_PERIOD] = {ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF};
 static double m_candleShadowMed[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
-static double zzRisk[MAX_PERIOD] = {0.40,0.20,0.10,0.05,0.025,0.00125,0.003125,0.01,0.01};
+static double zzRisk[MAX_PERIOD] = {0.16,0.08,0.04,0.02,0.01,0.005,0.0025,0.01,0.01};
 static double zzRiskAgressive[MAX_PERIOD] = {0.16,0.08,0.04,0.02,0.01,0.005,0.0025,0.01,0.01};
 static double m_candleLeg[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zz33Start[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
@@ -1312,8 +1312,8 @@ void checkOrdersOk()
                 }
                 
                 if (OrderType() == OP_BUY) {
-                    orderPercent55 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.55, Digits-1);
-                    orderPercent85 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.85, Digits-1);
+                    orderPercent55 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.50, Digits-1);
+                    orderPercent85 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.80, Digits-1);
                     
                     if (NormalizeDouble(Bid, Digits-1) >= orderPercent85 && orderPercent55 > OrderStopLoss()) {
                         if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
@@ -1325,8 +1325,8 @@ void checkOrdersOk()
                     orderGain = (OrderTakeProfit() - OrderOpenPrice()) / Point * OrderLots();
                     orderPercent = (Bid - OrderOpenPrice()) / (OrderTakeProfit() - OrderOpenPrice()) * 100;
                 } else if (OrderType() == OP_SELL) {
-                    orderPercent55 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.55, Digits-1);
-                    orderPercent85 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.85, Digits-1);
+                    orderPercent55 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.50, Digits-1);
+                    orderPercent85 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.80, Digits-1);
                     
                     if (NormalizeDouble(Ask, Digits-1) <= orderPercent85 && orderPercent55 < OrderStopLoss()) {
                         if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
@@ -1420,8 +1420,8 @@ void checkOrdersOk()
                             }
                         }
                     } else if (OrderStopLoss() == OrderOpenPrice() && OrderLots() == 0.01) {
-                        orderPercent55 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.55, Digits-1);
-                        orderPercent85 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.85, Digits-1);
+                        orderPercent55 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.50, Digits-1);
+                        orderPercent85 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.80, Digits-1);
                     
                         if (NormalizeDouble(Bid, Digits-1) >= orderPercent85 && orderPercent55 > OrderStopLoss()) {
                             if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
@@ -1499,8 +1499,8 @@ void checkOrdersOk()
                             }   
                         }
                     } else if (OrderStopLoss() == OrderOpenPrice() && OrderLots() == 0.01) {
-                        orderPercent55 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.55, Digits-1);
-                        orderPercent85 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.85, Digits-1);
+                        orderPercent55 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.50, Digits-1);
+                        orderPercent85 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.80, Digits-1);
                     
                         if (NormalizeDouble(Ask, Digits-1) <= orderPercent85 && orderPercent55 < OrderStopLoss()) {
                             if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
@@ -1638,6 +1638,7 @@ int wtsNormalTrade(int index)
     double candleHighNext = 0;
     double candleLowNext = 0;
     string comment = "";
+    double risk = 0;
 
     RefreshRates();
 
@@ -1706,7 +1707,14 @@ int wtsNormalTrade(int index)
                     m_normalTradeStop[index] = NormalizeDouble(candleLow - 30*Point, Digits-1);
                     
                     m_normalTradeRisk[index] = (m_normalTradeStart[index] - m_normalTradeStop[index]) / Point;
-                    m_normalTradeLots[index] = NormalizeDouble((AccountBalance() * getRisk(index)) / (m_normalTradeRisk[index] + spread), 2);
+                    
+                    if (m_normalTradeType[index] == 77) {
+                        risk = getRisk(index) / 2;
+                    } else {
+                        risk = getRisk(index);
+                    }
+                    
+                    m_normalTradeLots[index] = NormalizeDouble((AccountBalance() * risk) / (m_normalTradeRisk[index] + spread), 2);
 
 /* Para debug                    
                     comment = "Lots("+ DoubleToStr(m_normalTradeLots[index], 2) + 
@@ -1716,7 +1724,7 @@ int wtsNormalTrade(int index)
                     m_normalTradeRiskGain[index] = 4;
                     wtsPrintLine("apagar", index, candleHigh, Blue, comment);
 */                    
-                    m_normalTradeTakeProfit[index] = NormalizeDouble(m_normalTradeStop[index] + m_candleLeg[index] * Point, Digits-1);
+                    m_normalTradeTakeProfit[index] = NormalizeDouble(m_normalTradeStop[index] + (m_candleLeg[index] - spread) * Point, Digits-1);
                     
                     gain = (m_normalTradeTakeProfit[index] - m_normalTradeStart[index]) * m_normalTradeLots[index] / Point;
                     
@@ -1814,9 +1822,16 @@ int wtsNormalTrade(int index)
                     m_normalTradeStart[index] = NormalizeDouble(candleLow - (30 - spread)*Point, Digits-1);
 
                     m_normalTradeRisk[index] = (m_normalTradeStop[index] - m_normalTradeStart[index]) / Point;
-                    m_normalTradeLots[index] = NormalizeDouble((AccountBalance() * getRisk(index)) / (m_normalTradeRisk[index] + spread), 2);
                     
-                    m_normalTradeTakeProfit[index] = NormalizeDouble(m_normalTradeStop[index] - m_candleLeg[index] * Point, Digits-1);
+                    if (m_normalTradeType[index] == 77) {
+                        risk = getRisk(index) / 2;
+                    } else {
+                        risk = getRisk(index);
+                    }
+                    
+                    m_normalTradeLots[index] = NormalizeDouble((AccountBalance() * risk) / (m_normalTradeRisk[index] + spread), 2);
+                    
+                    m_normalTradeTakeProfit[index] = NormalizeDouble(m_normalTradeStop[index] - (m_candleLeg[index] - spread) * Point, Digits-1);
                     
                     gain = (m_normalTradeStart[index] - m_normalTradeTakeProfit[index]) * m_normalTradeLots[index] / Point;
 
@@ -2012,7 +2027,7 @@ int wtsPrintLineTrade(string name, int index, double value, int colored, string 
     
     ObjectDelete(name + period);
 
-    if (value > 0 && m_orderActive[index] == false && decision == 1) {
+    if (value > 0 && m_orderActive[index] == false/* && decision == 1*/) {
         ObjectCreate(name + period, OBJ_HLINE, 0, 0, value);
         ObjectSet(name + period, OBJPROP_COLOR, colored); 
         ObjectSet(name + period, OBJPROP_STYLE, 2);
