@@ -253,8 +253,8 @@ int start()
 
         }                              
      
-        wtsPrintLineTrade("zzStart", i, zzStart[i], Red, comment, validDecision(i));
-        wtsPrintLineTrade("zzStop", i, zzStop[i], Blue, "", validDecision(i));
+        wtsPrintLineTrade("zzStart", i, zzStart[i], Blue, comment, validDecision(i));
+        wtsPrintLineTrade("zzStop", i, zzStop[i], Red, "", validDecision(i));
             
 /*        
         //33%
@@ -503,6 +503,8 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
 {
     int i;
     double zz = 0;
+    int highest_idx;
+    int lowest_idx;
     int zzTotal = 0;
     int spread = MarketInfo(Symbol(), MODE_SPREAD);
     double zzBuffer[200];
@@ -512,6 +514,8 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
     double pernaPerc = 0;
     double startPerc = 0;
     double targetPerc = 0;
+    double highest = 0;
+    double lowest = 0;
     double swapLong = MarketInfo(Symbol(), MODE_SWAPLONG);
     double swapShort = MarketInfo(Symbol(), MODE_SWAPSHORT);
 
@@ -660,34 +664,48 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
         zz60Start[index] = 0;
     }
 
-    for (i = m_candleLastBarShift[index]-1; i != 0; i--) {
-        if ((m_agressiveState[index] == ST_UP && (iLow(Symbol(), period, i) < zz60Start[index] || Ask < zz60Start[index])) ||
-            (m_agressiveState[index] == ST_DOWN && ((iHigh(Symbol(), period, i) + spread * Point) > zz60Start[index]) || Bid > zz60Start[index]) && m_orderActive[index] == false) {
-            zz33Start[index] = 0;
-            zz50Start[index] = 0;
-            zz60Start[index] = 0;
-            zz33Stop[index] = 0;
-            zz50Stop[index] = 0;
-            zz60Stop[index] = 0;
-            zz33Target[index] = 0;
-            zz50Target[index] = 0;
-            zz60Target[index] = 0;
-            m_agressiveState[index] = ST_UNDEF;
-        } else if ((m_agressiveState[index] == ST_UP && (iLow(Symbol(), period, i) < zz50Start[index] || Ask < zz50Start[index])) ||
-            (m_agressiveState[index] == ST_DOWN && ((iHigh(Symbol(), period, i) + spread * Point) > zz50Start[index] || Bid > zz50Start[index]))) {
-            zz33Start[index] = 0;
-            zz50Start[index] = 0;
-            zz33Stop[index] = 0;
-            zz50Stop[index] = 0;
-            zz33Target[index] = 0;
-            zz50Target[index] = 0;
-        } else if ((m_agressiveState[index] == ST_UP && (iLow(Symbol(), period, i) < zz33Start[index] || Ask < zz33Start[index])) ||
-            (m_agressiveState[index] == ST_DOWN && ((iHigh(Symbol(), period, i) + spread * Point) > zz33Start[index]) || Bid > zz33Start[index])) {
-            zz33Start[index] = 0;
-            zz33Stop[index] = 0;
-            zz33Target[index] = 0;
-        } 
-    }    
+
+    highest_idx = iHighest(Symbol(), period, MODE_HIGH, m_candleLastBarShift[index]);
+    highest = iHigh(Symbol(), period, highest_idx) + m_candleShadowMed[index] * Point;
+
+    lowest_idx = iLowest(Symbol(), period, MODE_LOW, m_candleLastBarShift[index]);
+    lowest = iLow(Symbol(), period, lowest_idx) - m_candleShadowMed[index] * Point;
+
+    if (index == 3) {
+        m_aux[3] = zz50Start[index];
+        m_aux[4] = m_candleLastBarShift[index];
+    }
+
+    if (
+        ((lowest_idx > 0 && m_agressiveState[index] == ST_UP && lowest < zz60Start[index]) || (lowest_idx == 0 && Ask < zz60Start[index])) ||
+        ((highest_idx > 0 && m_agressiveState[index] == ST_DOWN && highest > zz60Start[index]) || (highest_idx == 0 && Bid > zz60Start[index])) ||
+        (m_orderActive[index] == true)) {
+        zz33Start[index] = 0;
+        zz50Start[index] = 0;
+        zz60Start[index] = 0;
+        zz33Stop[index] = 0;
+        zz50Stop[index] = 0;
+        zz60Stop[index] = 0;
+        zz33Target[index] = 0;
+        zz50Target[index] = 0;
+        zz60Target[index] = 0;
+        m_agressiveState[index] = ST_UNDEF;
+    } else if (
+        ((lowest_idx > 0 && m_agressiveState[index] == ST_UP && lowest < zz50Start[index]) || (lowest_idx == 0 && Ask < zz50Start[index])) ||
+        ((highest_idx > 0 && m_agressiveState[index] == ST_DOWN && highest > zz50Start[index]) || (highest_idx == 0 && Bid > zz50Start[index]))) {
+        zz33Start[index] = 0;
+        zz50Start[index] = 0;
+        zz33Stop[index] = 0;
+        zz50Stop[index] = 0;
+        zz33Target[index] = 0;
+        zz50Target[index] = 0;
+    } else if (
+        ((lowest_idx > 0 && m_agressiveState[index] == ST_UP && lowest < zz33Start[index]) || (lowest_idx == 0 && Ask < zz33Start[index])) ||
+        ((highest_idx > 0 && m_agressiveState[index] == ST_DOWN && highest > zz33Start[index]) || (highest_idx == 0 && Bid > zz33Start[index]))) {
+        zz33Start[index] = 0;
+        zz33Stop[index] = 0;
+        zz33Target[index] = 0;
+    } 
 
     zz33Start[index] = NormalizeDouble(zz33Start[index] ,Digits-1);
     zz50Start[index] = NormalizeDouble(zz50Start[index] ,Digits-1);
@@ -700,7 +718,7 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
     zz33Target[index] = NormalizeDouble(zz33Target[index] ,Digits-1);
     zz50Target[index] = NormalizeDouble(zz50Target[index] ,Digits-1);
     zz60Target[index] = NormalizeDouble(zz60Target[index] ,Digits-1);
-    
+
     if (zz33Start[index] != 0 && zz33Stop[index] != 0) {
         zzStart[index] = zz33Start[index];
         zzStop[index] = zz33Stop[index];
@@ -927,14 +945,14 @@ void calcMedShadow()
         medLowShadow = NormalizeDouble(medLowShadow / Point, 0);
     
         if (medLowShadow < spread) {
-            medLowShadow = spread;
+            //medLowShadow = spread;
         }
 
         medHighShadow /= medTotal;
         medHighShadow = NormalizeDouble(medHighShadow / Point, 0);
     
         if (medHighShadow < spread) {
-            medHighShadow = spread;
+            //medHighShadow = spread;
         }
         
         m_candleShadowMed[j] = (medLowShadow + medHighShadow) / 2;
@@ -1697,7 +1715,7 @@ int wtsNormalTrade(int index)
                     if (wtsCandleIsHigh(wtsGetPeriodPrev(period), 1)) {
                         candleHighNext = iHigh(Symbol(), wtsGetPeriodPrev(period), 1);
             
-                        if (candleHighNext < candleHigh && Bid < (candleHighNext + 30*Point)) {
+                        if (candleHighNext < candleHigh/* && Bid < (candleHighNext + 30*Point)*/) {
                             candleHigh = candleHighNext;
                             m_normalTradeType[index] = 77;
                         }
@@ -1810,7 +1828,7 @@ int wtsNormalTrade(int index)
                     if (wtsCandleIsLow(wtsGetPeriodPrev(period), 1)) {
                         candleLowNext = iLow(Symbol(), wtsGetPeriodPrev(period), 1);
             
-                        if (candleLowNext > candleLow && Ask > (candleLowNext + 30*Point)) {
+                        if (candleLowNext > candleLow/* && Ask > (candleLowNext + 30*Point)*/) {
                             candleLow = candleLowNext;
                             m_normalTradeType[index] = 77;
                         }
