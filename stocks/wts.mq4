@@ -1667,6 +1667,8 @@ int wtsNormalTrade(int index)
     double candleLowNext = 0;
     string comment = "";
     double risk = 0;
+    
+    m_normalTradeType[index] = 0;
 
     RefreshRates();
 
@@ -1709,9 +1711,10 @@ int wtsNormalTrade(int index)
                     }
                 }
 */
-            } else if (zzReturn[index] != 0 && wtsCandleIsHigh(period, 1)) {
+            } /*else if (zzReturn[index] != 0 && wtsCandleIsHigh(period, 1)) {
                 tradeOk = true;
-            }        
+                m_normalTradeType[index] = 88;
+            }*/        
             
             
             
@@ -1762,6 +1765,10 @@ int wtsNormalTrade(int index)
                         m_normalTradeRiskGain[index] = gain / loss;
                     } else {
                         m_normalTradeRiskGain[index] = 0;
+                    }
+                   
+                    if (iClose(Symbol(), period, 1) > m_normalTradeStart[index]) {
+                        m_normalTradeRiskGain[index] = -1;
                     }
                    
                     comment = "" + wtsGetPeriodNameByIndex(index) +": " +
@@ -1821,11 +1828,10 @@ int wtsNormalTrade(int index)
                     }
                 }
 */
-            } else if (zzReturn[index] != 0 && wtsCandleIsLow(period, 1)) {
+            } /*else if (zzReturn[index] != 0 && wtsCandleIsLow(period, 1)) {
                 tradeOk = true;
-            } 
-
-            
+                m_normalTradeType[index] = 88;
+            }*/ 
 
             if (/*((wtsCandleIsLow(period, candleStop) && candleStop > 0) || 
                  (wtsCandleIsLow(period, candleStop-1) && candleStop > 1) ||
@@ -1865,8 +1871,14 @@ int wtsNormalTrade(int index)
                     
                     if (loss != 0) {
                         m_normalTradeRiskGain[index] = gain / loss;
+                    } else {
+                        m_normalTradeRiskGain[index] = 0;
                     }
                    
+                    if ((iClose(Symbol(), period, 1) + spread * Point) < m_normalTradeStart[index]) {
+                        m_normalTradeRiskGain[index] = -1;
+                    }
+                    
                     comment = "" + wtsGetPeriodNameByIndex(index) +": " +
                               "" + DoubleToStr(m_normalTradeLots[index], 2) +" | "+
                               "-$" + DoubleToStr(loss, 2) +" | "+
