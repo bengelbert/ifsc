@@ -32,6 +32,10 @@ int zzMagicNumber = 8888;
 
 static double m_candleBottom[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleBottomTime[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static double m_candleBottomPrev[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static int    m_candleBottomShift[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static int    m_candleBottomShiftPrev[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static double m_candleBottomTimePrev[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleBottomTimeFrame[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleFibo33[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleFibo50[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
@@ -45,6 +49,10 @@ static int    m_candleLowestAfterHighest[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 
 static double m_candleTop[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleTopTime[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static double m_candleTopPrev[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static double m_candleTopTimePrev[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static int    m_candleTopShift[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
+static int    m_candleTopShiftPrev[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double zzTopTimeFrame[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_candleTopBottomCount[MAX_PERIOD] = {0,0,0,0,0,0,0,0};
 static double m_agressiveState[MAX_PERIOD] = {ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF,ST_UNDEF};
@@ -469,9 +477,9 @@ double getRisk(int index)
         } 
     }
 */    
-    if (AccountBalance() < 50) {
-        risk *= 2;
-    }
+//    if (AccountBalance() < 50) {
+//        risk *= 2;
+//    }
 
     return (risk);
 }
@@ -568,19 +576,43 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
         m_candleTopBottomCount[index]++;
         
         if (zzBuffer[i] > m_candleTop[index] && zzBufferClose[i] > m_candleTop[index]) {
+            //Prev
+            m_candleTopPrev[index] = m_candleTop[index];
+            m_candleTopTimePrev[index] = m_candleTopTime[index];
+            m_candleTopShiftPrev[index] = m_candleTopShift[index];
+            m_candleBottomPrev[index] = m_candleBottom[index];
+            m_candleBottomTimePrev[index] = m_candleBottomTime[index];
+            m_candleBottomShiftPrev[index] = m_candleBottomShift[index];
+
             m_candleTop[index] = zzBuffer[i];
             m_candleTopTime[index] = zzBufferTime[i];
+            m_candleTopShift[index] = zzShift[i];
+
             m_candleBottom[index] = zzBuffer[i-1];
             m_candleBottomTime[index] = zzBufferTime[i-1];
+            m_candleBottomShift[index] = zzShift[i-1];
+
             m_agressiveState[index] = ST_UP;
             m_normalState[index] = ST_UP;
             m_candleTopBottomCount[index] = 0;
             m_candleLastBarShift[index] = zzShift[i];
         } else if (zzBuffer[i] > m_candleTop[index]) {
+            //Prev
+            m_candleTopPrev[index] = m_candleTop[index];
+            m_candleTopTimePrev[index] = m_candleTopTime[index];
+            m_candleTopShiftPrev[index] = m_candleTopShift[index];
+            m_candleBottomPrev[index] = m_candleBottom[index];
+            m_candleBottomTimePrev[index] = m_candleBottomTime[index];
+            m_candleBottomShiftPrev[index] = m_candleBottomShift[index];
+
             m_candleTop[index] = zzBuffer[i];
             m_candleTopTime[index] = zzBufferTime[i];
+            m_candleTopShift[index] = zzShift[i];
+
             m_candleBottom[index] = zzBuffer[i-1];
             m_candleBottomTime[index] = zzBufferTime[i-1];
+            m_candleBottomShift[index] = zzShift[i-1];
+
             m_agressiveState[index] = ST_CONG;
             m_normalState[index] = ST_CONG;
             m_candleTopBottomCount[index] = 0;
@@ -588,19 +620,43 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
         }
         
         if (zzBuffer[i] < m_candleBottom[index] && zzBufferClose[i] < m_candleBottom[index]) {
+            //Prev
+            m_candleTopPrev[index] = m_candleTop[index];
+            m_candleTopTimePrev[index] = m_candleTopTime[index];
+            m_candleTopShiftPrev[index] = m_candleTopShift[index];
+            m_candleBottomPrev[index] = m_candleBottom[index];
+            m_candleBottomTimePrev[index] = m_candleBottomTime[index];
+            m_candleBottomShiftPrev[index] = m_candleBottomShift[index];
+
             m_candleTop[index] = zzBuffer[i-1];
-            m_candleBottom[index] = zzBuffer[i];
             m_candleTopTime[index] = zzBufferTime[i-1];
+            m_candleTopShift[index] = zzShift[i-1];
+            
+            m_candleBottom[index] = zzBuffer[i];
             m_candleBottomTime[index] = zzBufferTime[i];
+            m_candleBottomShift[index] = zzShift[i];
+
             m_agressiveState[index] = ST_DOWN;
             m_normalState[index] = ST_DOWN;
             m_candleTopBottomCount[index] = 0;
             m_candleLastBarShift[index] = zzShift[i];
         } else if (zzBuffer[i] < m_candleBottom[index]) {
+            //Prev
+            m_candleTopPrev[index] = m_candleTop[index];
+            m_candleTopTimePrev[index] = m_candleTopTime[index];
+            m_candleTopShiftPrev[index] = m_candleTopShift[index];
+            m_candleBottomPrev[index] = m_candleBottom[index];
+            m_candleBottomTimePrev[index] = m_candleBottomTime[index];
+            m_candleBottomShiftPrev[index] = m_candleBottomShift[index];
+
             m_candleTop[index] = zzBuffer[i-1];
             m_candleTopTime[index] = zzBufferTime[i-1];
+            m_candleTopShift[index] = zzShift[i-1];
+
             m_candleBottom[index] = zzBuffer[i];
             m_candleBottomTime[index] = zzBufferTime[i];
+            m_candleBottomShift[index] = zzShift[i];
+            
             m_agressiveState[index] = ST_CONG;
             m_normalState[index] = ST_CONG;
             m_candleTopBottomCount[index] = 0;
@@ -617,6 +673,7 @@ void wtsCalcZigzag(string strPeriod, int period, int index)
     wtsSetCandleFibo(index);
 
     wtsNormalTrade(index);
+    wtsPrintLT(index);
 
     //33%    
     if (m_agressiveState[index] == ST_UP) {
@@ -1306,6 +1363,7 @@ void checkOrdersOk()
     double orderPercent = 0;
     double orderPercent55 = 0;
     double orderPercent85 = 0;
+    double swapStop = 0;
     double spread = MarketInfo(Symbol(), MODE_SPREAD);
     
     for (i = 0; i < MAX_PERIOD; i++) {
@@ -1461,15 +1519,23 @@ void checkOrdersOk()
                                     Sleep(1000);
                             }
                         }
-                    } else if (OrderStopLoss() == OrderOpenPrice() && OrderLots() == 0.01) {
+                    } else if (OrderStopLoss() >= OrderOpenPrice() && OrderLots() == 0.01) {
                         orderPercent55 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.50, Digits-1);
                         orderPercent85 = NormalizeDouble(OrderOpenPrice() + (OrderTakeProfit() - OrderOpenPrice()) * 0.80, Digits-1);
+                    
+                        if (OrderSwap() < 0) {
+                           swapStop = - (OrderSwap() / OrderLots()) * Point;
+                        }
                     
                         if (NormalizeDouble(Bid, Digits-1) >= orderPercent85 && orderPercent55 > OrderStopLoss()) {
                             if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
                                 Sleep(1000);
                             }
-                        }
+                        } else if (OrderSwap() < 0 && Bid > OrderOpenPrice() && OrderStopLoss() >= OrderOpenPrice() && ((OrderStopLoss() - OrderOpenPrice()) < swapStop)) {
+                            if (!OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice() + swapStop, OrderTakeProfit(), 0, Green)) {
+                                Sleep(1000);
+                            }
+                        } 
                         
                         orderParcialGain = (orderPercent55 - OrderOpenPrice()) / Point * OrderLots();
                         orderGain = (OrderTakeProfit() - OrderOpenPrice()) / Point * OrderLots();
@@ -1540,12 +1606,20 @@ void checkOrdersOk()
                                 Sleep(1000);
                             }   
                         }
-                    } else if (OrderStopLoss() == OrderOpenPrice() && OrderLots() == 0.01) {
+                    } else if (OrderStopLoss() <= OrderOpenPrice() && OrderLots() == 0.01) {
                         orderPercent55 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.50, Digits-1);
                         orderPercent85 = NormalizeDouble(OrderOpenPrice() - (OrderOpenPrice() - OrderTakeProfit()) * 0.80, Digits-1);
                     
+                        if (OrderSwap() < 0) {
+                           swapStop = - (OrderSwap() / OrderLots()) * Point;
+                        }
+                    
                         if (NormalizeDouble(Ask, Digits-1) <= orderPercent85 && orderPercent55 < OrderStopLoss()) {
                             if (!OrderModify(OrderTicket(), OrderOpenPrice(), orderPercent55, OrderTakeProfit(), 0, Yellow)) {
+                                Sleep(1000);
+                            }
+                        } else if (OrderSwap() < 0 && Ask < OrderOpenPrice() && OrderStopLoss() <= OrderOpenPrice() && ((OrderOpenPrice() - OrderStopLoss()) < swapStop)) {
+                            if (!OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice() - swapStop, OrderTakeProfit(), 0, Green)) {
                                 Sleep(1000);
                             }
                         }
@@ -1688,6 +1762,7 @@ int wtsNormalTrade(int index)
 
     switch (m_normalState[index]) {
         case ST_UP:
+       
             m_candleLowestRetration[index] = iLowest(Symbol(), period, MODE_LOW, m_candleLastBarShift[index]);
 
             m_candleHighestAfterLowest[index] = iHighest(Symbol(), period, MODE_HIGH, m_candleLowestRetration[index]+1);
@@ -1810,6 +1885,7 @@ int wtsNormalTrade(int index)
             break;
  
         case ST_DOWN:
+            
             m_candleHighestRetration[index] = iHighest(Symbol(), period, MODE_HIGH, m_candleLastBarShift[index]);
             
             m_candleLowestAfterHighest[index] = iLowest(Symbol(), period, MODE_LOW, m_candleHighestRetration[index]+1);
@@ -2119,6 +2195,24 @@ int wtsPrintTrend(string name, int index, double value, double initTime)
     return (0);
 }
 
+int wtsPrintTrendFull(string name, int index, double price1, double time1, double price2, double time2)
+{
+    int period = wtsGetPeriodByIndex(index);
+    
+    if (index == getIndexByPeriod(Period())) {
+        ObjectDelete(name);
+        ObjectCreate(name, OBJ_TREND, 0, 0, price2);
+        ObjectSet(name, OBJPROP_COLOR, Gold); 
+        ObjectSet(name, OBJPROP_FONTSIZE, 7); 
+        ObjectSet(name, OBJPROP_TIME1, time1);
+        ObjectSet(name, OBJPROP_TIME2, time2);
+        ObjectSet(name, OBJPROP_PRICE1, price1);
+        ObjectSet(name, OBJPROP_PRICE2, price2);
+//        ObjectSet(name + wtsGetPeriodNameByIndex(index), OBJPROP_STYLE, 2);
+    }
+    return (0);
+}
+
 int wtsSetCandleFibo(int index) 
 {
     double initTime = 0;
@@ -2165,3 +2259,68 @@ int wtsGetPeriodPrev(int period)
     
     return (prev);
 }
+
+void wtsPrintLT(int index)
+{
+    int period = wtsGetPeriodByIndex(index);
+    double lta = 0;
+    double bottom = 0;
+    double bottomTime = 0;
+    double bottomShift = 0;
+    double top = 0;
+    double topTime = 0;
+    double topShift = 0;
+    string comment = "";
+
+    switch (m_normalState[index]) {
+    case ST_UP:
+        
+        if (m_candleBottom[index] != m_candleBottomPrev[index]) {
+            bottom = m_candleBottom[index];
+            bottomTime = m_candleBottomTime[index];
+            bottomShift = m_candleBottomShift[index];
+        } else {
+            bottom = iLow(Symbol(), period, m_candleLowestRetration[index]);
+            bottomTime = iTime(Symbol(), period, m_candleLowestRetration[index]);
+            bottomShift = m_candleLowestRetration[index];
+        }
+        
+        wtsPrintTrendFull("LT", index, m_candleBottomPrev[index], m_candleBottomTimePrev[index], bottom, bottomTime);
+        
+        lta = ((bottom - m_candleBottomPrev[index]) / (m_candleBottomShiftPrev[index] - bottomShift)) * bottomShift + bottom;
+
+        comment = "LTA_"+wtsGetPeriodNameByIndex(index);
+
+        //wtsPrintLine("LTVAL0"+index, lta, Purple, comment);
+        wtsPrintLine("LTVAL1"+index, lta-m_candleShadowMed[index]*Point, Purple, comment);
+        
+        break;
+        
+    case ST_DOWN:
+        if (m_candleTop[index] != m_candleTopPrev[index]) {
+            top = m_candleTop[index];
+            topTime = m_candleTopTime[index];
+            topShift = m_candleTopShift[index];
+        } else {
+            top = iHigh(Symbol(), period, m_candleHighestRetration[index]);
+            topTime = iTime(Symbol(), period, m_candleHighestRetration[index]);
+            topShift = m_candleHighestRetration[index];
+        }
+        
+        wtsPrintTrendFull("LT", index, m_candleTopPrev[index], m_candleTopTimePrev[index], top, topTime);
+        
+        lta = top - ((m_candleTopPrev[index] - top) / (m_candleTopShiftPrev[index] - topShift)) * topShift;
+
+        comment = "LTB_"+wtsGetPeriodNameByIndex(index);
+
+        //wtsPrintLine("LTVAL0"+index, lta, Purple, comment);
+        wtsPrintLine("LTVAL1"+index, lta+m_candleShadowMed[index]*Point, Purple, comment);
+        
+        break;
+        
+    default:
+        ObjectDelete("LT");
+        break;
+    }
+}
+
