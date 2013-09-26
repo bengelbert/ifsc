@@ -101,6 +101,7 @@ static int gblStopMultd[MAX_PERIODS] = {0, 0};
 static int gblTimeFrame[MAX_PERIODS] = {PERIOD_D1, PERIOD_W1};
 static double gblLots[MAX_PERIODS] = {0, 0};
 static double gblMedCandles[MAX_PERIODS] = {0, 0};
+static double gblMedCandlesFactor[MAX_PERIODS] = {1.25, 1};
 static double gblSL[MAX_PERIODS] = {0, 0};
 static double gblTP[MAX_PERIODS] = {0, 0};
 
@@ -580,7 +581,7 @@ int movmedStart(int index)
 
     gblMedCandles[index] /= 21;
     gblMedCandles[index] /= Point;
-    gblMedCandles[index] /= 1.25;
+    gblMedCandles[index] /= gblMedCandlesFactor[index];
 
     gblStopMultd[index] = gblMedCandles[index] / gblSpread;
 
