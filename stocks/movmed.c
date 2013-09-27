@@ -1,4 +1,4 @@
-#define ObjectCreate()  ()
+/*#define ObjectCreate()  ()
 #define ObjectSet()     ()
 #define MarketInfo()    ()
 #define NormalizeDouble()    ()
@@ -43,10 +43,10 @@
 #define Bid    1
 #define Ask    0
 #define PERIOD_D1    0
-#define PERIOD_W1    0
+#define PERIOD_W1    0*/
 /******************************************************************************/
 
-#define MAX_PERIODS 2
+#define MAX_PERIODS 3
 #define PERIOD      PERIOD_D1
 
 /******************************************************************************/
@@ -54,10 +54,6 @@
 double aux = 0;
 //---- input parameters
 extern string StopSettings = "Set stops below";
-
-extern bool AllowBuy = false;
-
-extern bool AllowSell = false;
 
 extern bool CloseOnReverseSignal = true;
 
@@ -69,44 +65,52 @@ extern string EndTime = "23:59";
 
 extern string Ma1 = "First Ma settings";
 
-extern int Ma1Period = 16;
-
-extern int Ma1Shift = 8;
-
-extern int Ma1Method = MODE_SMA;
-
-extern int Ma1AppliedPrice = PRICE_MEDIAN;
-
 extern string Ma2 = "Second Ma settings";
-
-extern int Ma2Period = 1;
-
-extern int Ma2Shift = 0;
-
-extern int Ma2Method = MODE_SMA;
-
-extern int Ma2AppliedPrice = PRICE_MEDIAN;
 
 extern string MagicNumbers = "Set different magicnumber for each timeframe of a pair";
 
-extern int MagicNumber = 103;
 
 
 static int gblHaltBuy[MAX_PERIODS] = {0, 0};
 static int gblHaltSell[MAX_PERIODS] = {0, 0};
+static int gblMagicNumber[MAX_PERIODS] = {103, 206, 412};
+static int gblMa1Period = 16;
+static int gblMa1Shift = 8;
+static int gblMa1Method = MODE_SMA;
+static int gblMa1AppliedPrice = PRICE_MEDIAN;
+static int gblMa2Period = 1;
+static int gblMa2Shift = 0;
+static int gblMa2Method = MODE_SMA;
+static int gblMa2AppliedPrice = PRICE_MEDIAN;
+static int gblOpenSell[MAX_PERIODS] = {0, 0};
+static int gblOpenBuy[MAX_PERIODS] = {0, 0};
 static int gblSlip = 5;
 static int gblSlippage[MAX_PERIODS] = {0, 0};
 static int gblSpread;
 static int gblStopMultd[MAX_PERIODS] = {0, 0};
-static int gblTimeFrame[MAX_PERIODS] = {PERIOD_D1, PERIOD_W1};
+static int gblTimeFrame[MAX_PERIODS] = {PERIOD_D1, PERIOD_W1, PERIOD_MN1};
+
+static bool gblBuySignal[MAX_PERIODS] = {0, 0};
+static bool gblCloseSell[MAX_PERIODS] = {0, 0};
+static bool gblCloseBuy[MAX_PERIODS] = {0, 0};
+static bool gblSellSignal[MAX_PERIODS] = {0, 0};
+static bool gblAllowBuy[MAX_PERIODS] = {false, true, true};
+static bool gblAllowSell[MAX_PERIODS] = {false, true, true};
+
 static double gblLots[MAX_PERIODS] = {0, 0};
+static double gblMA1_bc[MAX_PERIODS] = {0, 0};
+static double gblMA1_bp[MAX_PERIODS] = {0, 0};
+static double gblMA1_bl[MAX_PERIODS] = {0, 0};
+static double gblMA2_bc[MAX_PERIODS] = {0, 0};
+static double gblMA2_bp[MAX_PERIODS] = {0, 0};
+static double gblMA2_bl[MAX_PERIODS] = {0, 0};
 static double gblMedCandles[MAX_PERIODS] = {0, 0};
-static double gblMedCandlesFactor[MAX_PERIODS] = {1.25, 1};
+static double gblMedCandlesFactor[MAX_PERIODS] = {1.25, 1.25, 1.25};
+static double gblPercentage[MAX_PERIODS] = {0, 0};
 static double gblSL[MAX_PERIODS] = {0, 0};
 static double gblTP[MAX_PERIODS] = {0, 0};
 
-double perc = 0;
-string freeze;
+static string gblFreeze[MAX_PERIODS] = {"", ""};
 
 /******************************************************************************/
 
@@ -128,16 +132,41 @@ int init()
     ObjectSet("label_1", OBJPROP_CORNER, 0); // Reference corner
     ObjectSet("label_1", OBJPROP_XDISTANCE, 10); // X coordinate
     ObjectSet("label_1", OBJPROP_YDISTANCE, 28); // Y coordinate
-    
-    ObjectCreate("label_buy", OBJ_LABEL, 0, 0, 0); // Creating obj.
-    ObjectSet("label_buy", OBJPROP_CORNER, 0); // Reference corner
-    ObjectSet("label_buy", OBJPROP_XDISTANCE, 10); // X coordinate
-    ObjectSet("label_buy", OBJPROP_YDISTANCE, 41); // Y coordinate
 
-    ObjectCreate("label_sell", OBJ_LABEL, 0, 0, 0); // Creating obj.
-    ObjectSet("label_sell", OBJPROP_CORNER, 0); // Reference corner
-    ObjectSet("label_sell", OBJPROP_XDISTANCE, 10); // X coordinate
-    ObjectSet("label_sell", OBJPROP_YDISTANCE, 53); // Y coordinate
+    ObjectCreate("label_2", OBJ_LABEL, 0, 0, 0); // Creating obj.
+    ObjectSet("label_2", OBJPROP_CORNER, 0); // Reference corner
+    ObjectSet("label_2", OBJPROP_XDISTANCE, 10); // X coordinate
+    ObjectSet("label_2", OBJPROP_YDISTANCE, 41); // Y coordinate
+
+    ObjectCreate("label_buy0", OBJ_LABEL, 0, 0, 0); // Creating obj.
+    ObjectSet("label_buy0", OBJPROP_CORNER, 0); // Reference corner
+    ObjectSet("label_buy0", OBJPROP_XDISTANCE, 10); // X coordinate
+    ObjectSet("label_buy0", OBJPROP_YDISTANCE, 54); // Y coordinate
+
+    ObjectCreate("label_sell0", OBJ_LABEL, 0, 0, 0); // Creating obj.
+    ObjectSet("label_sell0", OBJPROP_CORNER, 0); // Reference corner
+    ObjectSet("label_sell0", OBJPROP_XDISTANCE, 125); // X coordinate
+    ObjectSet("label_sell0", OBJPROP_YDISTANCE, 54); // Y coordinate
+
+    ObjectCreate("label_buy1", OBJ_LABEL, 0, 0, 0); // Creating obj.
+    ObjectSet("label_buy1", OBJPROP_CORNER, 0); // Reference corner
+    ObjectSet("label_buy1", OBJPROP_XDISTANCE, 10); // X coordinate
+    ObjectSet("label_buy1", OBJPROP_YDISTANCE, 67); // Y coordinate
+
+    ObjectCreate("label_sell1", OBJ_LABEL, 0, 0, 0); // Creating obj.
+    ObjectSet("label_sell1", OBJPROP_CORNER, 0); // Reference corner
+    ObjectSet("label_sell1", OBJPROP_XDISTANCE, 125); // X coordinate
+    ObjectSet("label_sell1", OBJPROP_YDISTANCE, 67); // Y coordinate
+
+    ObjectCreate("label_buy2", OBJ_LABEL, 0, 0, 0); // Creating obj.
+    ObjectSet("label_buy2", OBJPROP_CORNER, 0); // Reference corner
+    ObjectSet("label_buy2", OBJPROP_XDISTANCE, 10); // X coordinate
+    ObjectSet("label_buy2", OBJPROP_YDISTANCE, 80); // Y coordinate
+
+    ObjectCreate("label_sell2", OBJ_LABEL, 0, 0, 0); // Creating obj.
+    ObjectSet("label_sell2", OBJPROP_CORNER, 0); // Reference corner
+    ObjectSet("label_sell2", OBJPROP_XDISTANCE, 125); // X coordinate
+    ObjectSet("label_sell2", OBJPROP_YDISTANCE, 80); // Y coordinate
 
     return (0);
 }
@@ -146,372 +175,158 @@ int init()
 
 int start()
 {
-    int i, j;
-    double high, low, lenCandle;
-    double difference;
-    int TradeTimeOk;
-    bool buysignal;
-    bool sellsignal;
-    int opensell;
-    int openbuy;
-    int closesell = 0;
-    int closebuy = 0;
-
     gblSpread = MarketInfo(Symbol(), MODE_SPREAD);
 
     movmedStart(0);
     movmedStart(1);
-
-
-    //-------------------------------------------------------------------+
-
-    // time check
-
-    //-------------------------------------------------------------------
-
-    if ((TimeCurrent() >= StrToTime(StartTime)) && (TimeCurrent() <= StrToTime(EndTime))) {
-
-        TradeTimeOk = 1;
-
-    } else {
-        TradeTimeOk = 1;
-    }
-
-    //-----------------------------------------------------------------
-
-    // indicator checks
-
-    //-----------------------------------------------------------------
-
-    // Ma strategy one
-
-    double MA1_bc = iMA(NULL, PERIOD, Ma1Period, Ma1Shift, Ma1Method, Ma1AppliedPrice, 0);
-
-    double MA1_bp = iMA(NULL, PERIOD, Ma1Period, Ma1Shift, Ma1Method, Ma1AppliedPrice, 1);
-
-    double MA1_bl = iMA(NULL, PERIOD, Ma1Period, Ma1Shift, Ma1Method, Ma1AppliedPrice, 2);
-
-    // Ma strategy two
-
-    double MA2_bc = iMA(NULL, PERIOD, Ma2Period, Ma2Shift, Ma2Method, Ma2AppliedPrice, 0);
-
-    double MA2_bp = iMA(NULL, PERIOD, Ma2Period, Ma2Shift, Ma2Method, Ma2AppliedPrice, 1);
-
-    double MA2_bl = iMA(NULL, PERIOD, Ma2Period, Ma2Shift, Ma2Method, Ma2AppliedPrice, 2);
-
-    //------------------opening criteria------------------------
-
-    if ((MA1_bc < MA2_bc) && (MA1_bp < MA2_bp) && (MA1_bl > MA2_bl)) {
-        buysignal = true;
-    } else {
-        buysignal = false;
-        freeze = "";
-    }
-
-    string ma1;
-    string ma2;
-    string ma3;
-    string ma4;
-
-    if (MA1_bc < MA2_bc) {
-        ma1 = "ok";
-    } else {
-        ma1 = "--";
-    }
-
-    if (MA1_bp < MA2_bp) {
-        ma2 = "ok";
-    } else {
-        ma2 = "--";
-    }
-
-    if (MA1_bl > MA2_bl) {
-        ma3 = "ok";
-    } else {
-        ma3 = "--";
-    }
-
-    if (freeze != "Buying trend") {
-        ma4 = "ok";
-    } else {
-        ma4 = "--";
-    }
-
-    ObjectSetText("label_buy",
-        "Buy: " + ma4 + " || " +
-        "" + ma3 + " | " +
-        "" + ma2 + " | " +
-        "" + ma1 + " | ",
-        7, "Arial", DarkOrange);
-
-    if ((MA1_bc > MA2_bc) && (MA1_bp > MA2_bp) && (MA1_bl < MA2_bl)) {
-        sellsignal = true;
-    } else {
-        sellsignal = false;
-        freeze = "";
-    }
-
-    if (MA1_bc > MA2_bc) {
-        ma1 = "ok";
-    } else {
-        ma1 = "--";
-    }
-
-    if (MA1_bp > MA2_bp) {
-        ma2 = "ok";
-    } else {
-        ma2 = "--";
-    }
-
-    if (MA1_bl < MA2_bl) {
-        ma3 = "ok";
-    } else {
-        ma3 = "--";
-    }
-
-    if (freeze != "Selling trend") {
-        ma4 = "ok";
-    } else {
-        ma4 = "--";
-    }
-
-    ObjectSetText("label_sell",
-        "Sell: " + ma4 + " || " +
-        "" + ma3 + " | " +
-        "" + ma2 + " | " +
-        "" + ma1 + " | ",
-        7, "Arial", DarkOrange);
-
-
-
-    //------------------------------closing criteria--------------
-
-    if ((MA1_bc > MA2_bc) && (MA1_bp > MA2_bp) && (MA1_bl < MA2_bl)) {
-        closebuy = 1;
-    } else {
-        closebuy = 0;
-    }
-
-    if ((MA1_bc < MA2_bc) && (MA1_bp < MA2_bp) && (MA1_bl > MA2_bl)) {
-        closesell = 1;
-    } else {
-        closesell = 0;
-    }
-
-    //-----------------------------------------------------------------------------------------------------
-
-    // Opening criteria
-
-    //-----------------------------------------------------------------------------------------------------
-
-    // Open buy
-
-    if ((buysignal == true) && (closebuy != 1) && (freeze != "Buying trend") && (TradeTimeOk == 1)) {
-        if (AllowBuy == true && gblHaltBuy[0] != true)
-            openbuy = OrderSend(Symbol(), OP_BUY, gblLots[0], Ask, gblSlippage[0], 0, 0, "Stochastic rsi buy order " + PERIOD, MagicNumber, 0, Blue);
-    }
-
-
-
-
-
-    // Open sell
-
-    if ((sellsignal == true) && (closesell != 1) && (freeze != "Selling trend") && (TradeTimeOk == 1)) {
-        if (AllowSell == true && gblHaltSell[0] != true)
-            opensell = OrderSend(Symbol(), OP_SELL, gblLots[0], Bid, gblSlippage[0], 0, 0, "Stochastic rsi sell order " + PERIOD, MagicNumber, 0, Red);
-    }
-
-    /*
-        if (buysignal == true) {
-            freeze = "Buying trend";
-        }
-
-        if (sellsignal == true) {
-            freeze = "Selling trend";
-        }
-     */
-    //-------------------------------------------------------------------------------------------------
-
-    // Closing criteria
-
-    //-------------------------------------------------------------------------------------------------
-
-    if (closesell == 1 || closebuy == 1 || openbuy < 1 || opensell < 1) {// start
-
-        if (OrdersTotal() > 0) {
-
-            for (i = 1; i <= OrdersTotal(); i++) { // Cycle searching in orders
-
-
-
-                if (OrderSelect(i - 1, SELECT_BY_POS) == true) { // If the next is available
-
-                    if (OrderMagicNumber() == MagicNumber && OrderType() == OP_BUY && OrderSymbol() == Symbol()) {
-                        freeze = "Buying trend";
-                    }
-
-                    if (OrderMagicNumber() == MagicNumber && OrderType() == OP_SELL && OrderSymbol() == Symbol()) {
-                        freeze = "Selling trend";
-                    }
-
-                    if (CloseOnReverseSignal == true) {
-
-                        if (OrderMagicNumber() == MagicNumber && closebuy == 1 && OrderType() == OP_BUY && OrderSymbol() == Symbol() && (OrderStopLoss() >= OrderOpenPrice())) {
-                            OrderClose(OrderTicket(), OrderLots(), Bid, gblSlippage[0], CLR_NONE);
-                        }
-
-                        if (OrderMagicNumber() == MagicNumber && closesell == 1 && OrderType() == OP_SELL && OrderSymbol() == Symbol() && (OrderStopLoss() <= OrderOpenPrice())) {
-                            OrderClose(OrderTicket(), OrderLots(), Ask, gblSlippage[0], CLR_NONE);
-                        }
-
-                    }
-
-                    // set stops
-                    double new_sl = 0;
-                    if ((OrderMagicNumber() == MagicNumber) && (OrderSymbol() == Symbol()) && (OrderType() == OP_BUY)) {
-                        perc = (Bid - OrderOpenPrice()) / (OrderTakeProfit() - OrderOpenPrice()) * 100;
-
-                        if (movmedIsHighCandle(PERIOD, 1)) {
-                            new_sl = iLow(Symbol(), PERIOD, 1) - gblSL[0]*Point;
-                        }
-
-                    } else if ((OrderMagicNumber() == MagicNumber) && (OrderSymbol() == Symbol()) && (OrderType() == OP_SELL)) {
-                        perc = (OrderOpenPrice() - Ask) / (OrderOpenPrice() - OrderTakeProfit()) * 100;
-
-                        if (movmedIsLowCandle(PERIOD, 1)) {
-                            new_sl = iHigh(Symbol(), PERIOD, 1) + gblSL[0]*Point;
-                        }
-                    }
-
-                    if ((perc < -15.0) && (OrderStopLoss() == 0) && (OrderMagicNumber() == MagicNumber) && (OrderSymbol() == Symbol()) && (OrderType() == OP_BUY)) {
-                        OrderClose(OrderTicket(), OrderLots(), Bid, gblSlippage[0], CLR_NONE);
-                    }
-
-                    if ((perc < -15.0) && (OrderStopLoss() == 0) && (OrderMagicNumber() == MagicNumber) && (OrderSymbol() == Symbol()) && (OrderType() == OP_SELL)) {
-                        OrderClose(OrderTicket(), OrderLots(), Ask, gblSlippage[0], CLR_NONE);
-                    }
-
-                    // Calculate take profit
-
-                    double tpb = NormalizeDouble(OrderOpenPrice() + gblTP[0]*Point, Digits - 1);
-
-                    double tps = NormalizeDouble(OrderOpenPrice() - gblTP[0]*Point, Digits - 1);
-
-                    // Calculate stop loss
-
-                    double slb = NormalizeDouble(OrderOpenPrice() - (gblSL[0]) * Point, Digits - 1);
-
-                    double sls = NormalizeDouble(OrderOpenPrice() + (gblSL[0]) * Point, Digits - 1);
-
-
-
-
-                    RefreshRates();
-
-                    if ((OrderMagicNumber() == MagicNumber) && (OrderTakeProfit() == 0) && (OrderSymbol() == Symbol()) && (OrderType() == OP_BUY)) {
-                        OrderModify(OrderTicket(), 0, OrderStopLoss(), tpb, 0, CLR_NONE);
-                    }
-
-                    if ((OrderMagicNumber() == MagicNumber) && (OrderTakeProfit() == 0) && (OrderSymbol() == Symbol()) && (OrderType() == OP_SELL)) {
-                        OrderModify(OrderTicket(), 0, OrderStopLoss(), tps, 0, CLR_NONE);
-                    }
-
-
-
-
-                    if ((OrderMagicNumber() == MagicNumber) && (OrderStopLoss() == 0) && (OrderSymbol() == Symbol()) && (OrderType() == OP_BUY)) {
-                        OrderModify(OrderTicket(), 0, slb, OrderTakeProfit(), 0, CLR_NONE);
-                    }
-
-                    if ((OrderMagicNumber() == MagicNumber) && (OrderStopLoss() == 0) && (OrderSymbol() == Symbol()) && (OrderType() == OP_SELL)) {
-                        OrderModify(OrderTicket(), 0, sls, OrderTakeProfit(), 0, CLR_NONE);
-                    }
-
-
-                    if ((OrderMagicNumber() == MagicNumber) && (OrderStopLoss() != 0) && (OrderSymbol() == Symbol()) && (OrderType() == OP_BUY) && (OrderStopLoss() < OrderOpenPrice()) && ((Bid - OrderOpenPrice()) > (OrderOpenPrice() - OrderStopLoss()))) {
-                        OrderModify(OrderTicket(), 0, OrderOpenPrice(), OrderTakeProfit(), 0, CLR_NONE);
-                    }
-
-                    if ((OrderMagicNumber() == MagicNumber) && (OrderStopLoss() != 0) && (OrderSymbol() == Symbol()) && (OrderType() == OP_SELL) && (OrderStopLoss() > OrderOpenPrice()) && ((OrderOpenPrice() - Ask) > (OrderStopLoss() - OrderOpenPrice()))) {
-                        OrderModify(OrderTicket(), 0, OrderOpenPrice(), OrderTakeProfit(), 0, CLR_NONE);
-                    }
-
-                    // SL up candles
-                    if (OrderMagicNumber() == MagicNumber &&
-                        OrderSymbol() == Symbol() &&
-                        OrderType() == OP_BUY &&
-                        new_sl != 0 &&
-                        new_sl > OrderStopLoss() &&
-                        OrderStopLoss() != 0) {
-                        OrderModify(OrderTicket(), 0, new_sl, OrderTakeProfit(), 0, CLR_NONE);
-                    }
-
-                    if (OrderMagicNumber() == MagicNumber &&
-                        OrderSymbol() == Symbol() &&
-                        OrderType() == OP_SELL &&
-                        new_sl != 0 &&
-                        new_sl < OrderStopLoss() &&
-                        OrderStopLoss() != 0) {
-                        OrderModify(OrderTicket(), 0, new_sl, OrderTakeProfit(), 0, CLR_NONE);
-                    }
-
-                    double swapStop = 0;
-
-                    if (OrderMagicNumber() == MagicNumber &&
-                        OrderSymbol() == Symbol() &&
-                        OrderSwap() < 0) {
-                        swapStop = -(OrderSwap() / OrderLots()) * Point;
-                    }
-
-                    if (OrderMagicNumber() == MagicNumber &&
-                        OrderSymbol() == Symbol() &&
-                        OrderType() == OP_BUY &&
-                        OrderTakeProfit() != 0 &&
-                        OrderSwap() < 0 &&
-                        Bid > OrderOpenPrice() &&
-                        OrderStopLoss() >= OrderOpenPrice() &&
-                        ((OrderStopLoss() - OrderOpenPrice()) < swapStop)) {
-                        OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice() + swapStop, OrderTakeProfit(), 0, CLR_NONE);
-                    }
-
-                    if (OrderMagicNumber() == MagicNumber &&
-                        OrderSymbol() == Symbol() &&
-                        OrderType() == OP_SELL &&
-                        OrderTakeProfit() != 0 &&
-                        OrderSwap() < 0 &&
-                        Ask < OrderOpenPrice() &&
-                        OrderStopLoss() <= OrderOpenPrice() &&
-                        ((OrderOpenPrice() - OrderStopLoss()) < swapStop)) {
-                        OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice() - swapStop, OrderTakeProfit(), 0, CLR_NONE);
-                    }
-
-
-                } // if available
-
-            } // cycle
-
-        }// orders total
-
-
-
-
-
-    }// stop
+    movmedStart(2);
 
     return (0);
 }
 
 /******************************************************************************/
 
-int movmedCheckOpenOrders(int index)
+int movmedCheckBuyOrders(int index)
+{
+    double slb = 0;
+    double tpb = 0;
+    double new_sl = 0;
+    double swapStop = 0;
+
+    RefreshRates();
+
+    gblFreeze[index] = "Buying trend";
+
+    if (CloseOnReverseSignal == true) {
+        if (gblCloseBuy[index] == true && OrderStopLoss() >= OrderOpenPrice()) {
+            OrderClose(OrderTicket(), OrderLots(), Bid, gblSlippage[index], CLR_NONE);
+        }
+    }
+
+    gblPercentage[index] = (Bid - OrderOpenPrice()) / (OrderTakeProfit() - OrderOpenPrice()) * 100;
+
+    if (movmedIsHighCandle(gblTimeFrame[index], 1)) {
+        new_sl = iLow(Symbol(), gblTimeFrame[index], 1) - gblSL[index] * Point;
+    }
+
+    if ((gblPercentage[index] < -15.0) && (OrderStopLoss() == 0)) {
+        OrderClose(OrderTicket(), OrderLots(), Bid, gblSlippage[index], CLR_NONE);
+    }
+
+    // Calculate take profit
+    tpb = NormalizeDouble(OrderOpenPrice() + gblTP[index] * Point, Digits - 1);
+
+    // Calculate stop loss
+    slb = NormalizeDouble(OrderOpenPrice() - (gblSL[index]) * Point, Digits - 1);
+
+    if (OrderTakeProfit() == 0) {
+        OrderModify(OrderTicket(), 0, OrderStopLoss(), tpb, 0, CLR_NONE);
+    }
+
+    if (OrderStopLoss() == 0) {
+        OrderModify(OrderTicket(), 0, slb, OrderTakeProfit(), 0, CLR_NONE);
+    }
+
+    if (OrderStopLoss() != 0 && 
+        OrderStopLoss() < OrderOpenPrice() && 
+        ((Bid - OrderOpenPrice()) > (OrderOpenPrice() - OrderStopLoss()))) {
+        OrderModify(OrderTicket(), 0, OrderOpenPrice(), OrderTakeProfit(), 0, CLR_NONE);
+    }
+
+    // SL up candles
+    if (new_sl != 0 && new_sl > OrderStopLoss() && OrderStopLoss() != 0) {
+        OrderModify(OrderTicket(), 0, new_sl, OrderTakeProfit(), 0, CLR_NONE);
+    }
+
+    if (OrderSwap() < 0) {
+        swapStop = -(OrderSwap() / OrderLots()) * Point;
+    }
+
+    if (OrderTakeProfit() != 0 &&
+        OrderSwap() < 0 &&
+        Bid > OrderOpenPrice() &&
+        OrderStopLoss() >= OrderOpenPrice() &&
+        ((OrderStopLoss() - OrderOpenPrice()) < swapStop)) {
+        OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice() + swapStop, OrderTakeProfit(), 0, CLR_NONE);
+    }
+}
+
+/******************************************************************************/
+
+int movmedCheckSellOrders(int index)
+{
+    double sls = 0;
+    double tps = 0;
+    double new_sl = 0;
+    double swapStop = 0;
+
+    RefreshRates();
+
+    gblFreeze[index] = "Selling trend";
+
+    if (CloseOnReverseSignal == true) {
+        if (gblCloseSell[index] == true && OrderStopLoss() <= OrderOpenPrice()) {
+            OrderClose(OrderTicket(), OrderLots(), Ask, gblSlippage[index], CLR_NONE);
+        }
+    }
+
+    gblPercentage[index] = (OrderOpenPrice() - Ask) / (OrderOpenPrice() - OrderTakeProfit()) * 100;
+
+    if (movmedIsLowCandle(gblTimeFrame[index], 1)) {
+        new_sl = iHigh(Symbol(), gblTimeFrame[index], 1) + gblSL[index] * Point;
+    }
+
+    if ((gblPercentage[index] < -15.0) && (OrderStopLoss() == 0)) {
+        OrderClose(OrderTicket(), OrderLots(), Ask, gblSlippage[index], CLR_NONE);
+    }
+
+    // Calculate take profit
+    tps = NormalizeDouble(OrderOpenPrice() - gblTP[index] * Point, Digits - 1);
+
+    // Calculate stop loss
+    sls = NormalizeDouble(OrderOpenPrice() + (gblSL[index]) * Point, Digits - 1);
+    
+    if (OrderTakeProfit() == 0) {
+        OrderModify(OrderTicket(), 0, OrderStopLoss(), tps, 0, CLR_NONE);
+    }
+
+    if (OrderStopLoss() == 0) {
+        OrderModify(OrderTicket(), 0, sls, OrderTakeProfit(), 0, CLR_NONE);
+    }
+
+    if (OrderStopLoss() != 0 && 
+        OrderStopLoss() > OrderOpenPrice() && 
+        ((OrderOpenPrice() - Ask) > (OrderStopLoss() - OrderOpenPrice()))) {
+        OrderModify(OrderTicket(), 0, OrderOpenPrice(), OrderTakeProfit(), 0, CLR_NONE);
+    }
+
+    if (new_sl != 0 && new_sl < OrderStopLoss() && OrderStopLoss() != 0) {
+        OrderModify(OrderTicket(), 0, new_sl, OrderTakeProfit(), 0, CLR_NONE);
+    }
+
+    if (OrderSwap() < 0) {
+        swapStop = -(OrderSwap() / OrderLots()) * Point;
+    }
+
+    if (OrderTakeProfit() != 0 &&
+        OrderSwap() < 0 &&
+        Ask < OrderOpenPrice() &&
+        OrderStopLoss() <= OrderOpenPrice() &&
+        ((OrderOpenPrice() - OrderStopLoss()) < swapStop)) {
+        OrderModify(OrderTicket(), OrderOpenPrice(), OrderOpenPrice() - swapStop, OrderTakeProfit(), 0, CLR_NONE);
+    }
+}
+
+/******************************************************************************/
+
+int movmedCheckHaltState(int index)
 {
     int i = 0;
 
     if (OrdersTotal() > 0) {
         for (i = 1; i <= OrdersTotal(); i++) {
             if (OrderSelect(i - 1, SELECT_BY_POS) == true) {
-                if (OrderMagicNumber() == MagicNumber) {
+                if (OrderMagicNumber() == gblMagicNumber[index]) {
                     if (OrderSymbol() == Symbol()) {
                         if (OrderType() == OP_BUY) {
                             gblHaltBuy[index] = true;
@@ -523,6 +338,65 @@ int movmedCheckOpenOrders(int index)
             }
         }
     }
+}
+
+/******************************************************************************/
+
+int movmedCheckOpenOrders(int index)
+{
+    int i;
+
+    if (gblCloseSell[index] == 1 || gblCloseBuy[index] == 1 || gblOpenBuy[index] < 1 || gblOpenSell[index] < 1) {// start
+
+        if (OrdersTotal() > 0) {
+
+            for (i = 1; i <= OrdersTotal(); i++) { // Cycle searching in orders
+
+                if (OrderSelect(i - 1, SELECT_BY_POS) == true) { // If the next is available
+
+                    if (OrderSymbol() == Symbol()) {
+                        if (OrderMagicNumber() == gblMagicNumber[index]) {
+                            if (OrderType() == OP_BUY) {
+                                movmedCheckBuyOrders(index);
+                            } else if (OrderType() == OP_SELL) {
+                                movmedCheckSellOrders(index);
+                            }
+                        }
+                    }
+                } // if available
+            } // cycle
+        }// orders total
+    }// stop
+}
+
+/******************************************************************************/
+
+int movmedClosingCriteria(int index)
+{
+    if ((gblMA1_bc[index] > gblMA2_bc[index]) && (gblMA1_bp[index] > gblMA2_bp[index]) && (gblMA1_bl[index] < gblMA2_bl[index])) {
+        gblCloseBuy[index] = true;
+    } else {
+        gblCloseBuy[index] = false;
+    }
+
+    if ((gblMA1_bc[index] < gblMA2_bc[index]) && (gblMA1_bp[index] < gblMA2_bp[index]) && (gblMA1_bl[index] > gblMA2_bl[index])) {
+        gblCloseSell[index] = true;
+    } else {
+        gblCloseSell[index] = false;
+    }
+}
+
+/******************************************************************************/
+
+int movmedIndicatorChecks(int index)
+{
+    gblMA1_bc[index] = iMA(NULL, gblTimeFrame[index], gblMa1Period, gblMa1Shift, gblMa1Method, gblMa1AppliedPrice, 0);
+    gblMA1_bp[index] = iMA(NULL, gblTimeFrame[index], gblMa1Period, gblMa1Shift, gblMa1Method, gblMa1AppliedPrice, 1);
+    gblMA1_bl[index] = iMA(NULL, gblTimeFrame[index], gblMa1Period, gblMa1Shift, gblMa1Method, gblMa1AppliedPrice, 2);
+
+    gblMA2_bc[index] = iMA(NULL, gblTimeFrame[index], gblMa2Period, gblMa2Shift, gblMa2Method, gblMa2AppliedPrice, 0);
+    gblMA2_bp[index] = iMA(NULL, gblTimeFrame[index], gblMa2Period, gblMa2Shift, gblMa2Method, gblMa2AppliedPrice, 1);
+    gblMA2_bl[index] = iMA(NULL, gblTimeFrame[index], gblMa2Period, gblMa2Shift, gblMa2Method, gblMa2AppliedPrice, 2);
 }
 
 /******************************************************************************/
@@ -559,6 +433,110 @@ bool movmedIsLowCandle(int timeframe, int shift)
     }
 
     return (ret);
+}
+
+/******************************************************************************/
+
+int movmedOpeningCriteria(int index)
+{
+    string ma1;
+    string ma2;
+    string ma3;
+    string ma4;
+
+    if ((gblMA1_bc[index] < gblMA2_bc[index]) && (gblMA1_bp[index] < gblMA2_bp[index]) && (gblMA1_bl[index] > gblMA2_bl[index])) {
+        gblBuySignal[index] = true;
+    } else {
+        gblBuySignal[index] = false;
+        gblFreeze[index] = "";
+    }
+
+    if (gblMA1_bc[index] < gblMA2_bc[index]) {
+        ma1 = "ok";
+    } else {
+        ma1 = "--";
+    }
+
+    if (gblMA1_bp[index] < gblMA2_bp[index]) {
+        ma2 = "ok";
+    } else {
+        ma2 = "--";
+    }
+
+    if (gblMA1_bl[index] > gblMA2_bl[index]) {
+        ma3 = "ok";
+    } else {
+        ma3 = "--";
+    }
+
+    if (gblFreeze[index] != "Buying trend") {
+        ma4 = "ok";
+    } else {
+        ma4 = "--";
+    }
+
+    ObjectSetText("label_buy"+index,
+        "Buy["+index+"]: " + ma4 + " || " +
+        "" + ma3 + " | " +
+        "" + ma2 + " | " +
+        "" + ma1 + " | ",
+        7, "Arial", DarkOrange);
+
+    if ((gblMA1_bc[index] > gblMA2_bc[index]) && (gblMA1_bp[index] > gblMA2_bp[index]) && (gblMA1_bl[index] < gblMA2_bl[index])) {
+        gblSellSignal[index] = true;
+    } else {
+        gblSellSignal[index] = false;
+        gblFreeze[index] = "";
+    }
+
+    if (gblMA1_bc[index] > gblMA2_bc[index]) {
+        ma1 = "ok";
+    } else {
+        ma1 = "--";
+    }
+    if (gblMA1_bp[index] > gblMA2_bp[index]) {
+        ma2 = "ok";
+    } else {
+        ma2 = "--";
+    }
+    if (gblMA1_bl[index] < gblMA2_bl[index]) {
+        ma3 = "ok";
+    } else {
+        ma3 = "--";
+    }
+
+    if (gblFreeze[index] != "Selling trend") {
+        ma4 = "ok";
+    } else {
+        ma4 = "--";
+    }
+
+    ObjectSetText("label_sell"+index,
+        "Sell["+index+"]: " + ma4 + " || " +
+        "" + ma3 + " | " +
+        "" + ma2 + " | " +
+        "" + ma1 + " | ",
+        7, "Arial", DarkOrange);
+
+    if ((gblBuySignal[index] == true) && (gblCloseBuy[index] != true) && (gblFreeze[index] != "Buying trend")) {
+        if (gblAllowBuy[index] == true && gblHaltBuy[index] != true)
+            gblOpenBuy[index] = OrderSend(Symbol(), OP_BUY, gblLots[index], Ask, gblSlippage[index], 0, 0, "Buy order: " + gblTimeFrame[index], gblMagicNumber[index], 0, Blue);
+    }
+
+    if ((gblSellSignal[index] == true) && (gblCloseSell[index] != true) && (gblFreeze[index] != "Selling trend")) {
+        if (gblAllowSell[index] == true && gblHaltSell[index] != true)
+            gblOpenSell[index] = OrderSend(Symbol(), OP_SELL, gblLots[index], Bid, gblSlippage[index], 0, 0, "Sell order: " + gblTimeFrame[index], gblMagicNumber[index], 0, Red);
+    }
+
+    /*
+        if (buysignal == true) {
+            freeze = "Buying trend";
+        }
+
+        if (sellsignal == true) {
+            freeze = "Selling trend";
+        }
+     */
 }
 
 /******************************************************************************/
@@ -606,15 +584,37 @@ int movmedStart(int index)
         "TP(" + DoubleToStr(gblTP[index], 0) + ") " +
         "SL(" + DoubleToStr(gblSL[index], 0) + ") " +
         "Lots(" + DoubleToStr(gblLots[index], 2) + ") " +
-        "Perc(" + DoubleToStr(perc, 2) + "%) " +
+        "Perc(" + DoubleToStr(gblPercentage[index], 2) + "%) " +
         "Mult(" + gblStopMultd[index] + ") ",
         7, "Arial", DarkOrange);
 
-    perc = 0;
+    gblPercentage[index] = 0;
 
     /*
      * Check open orders
      */
+    movmedCheckHaltState(index);
+
+    /*
+     * indicator checks
+     */
+    movmedIndicatorChecks(index);
+
+    /*
+     * closing criteria
+     */
+    movmedClosingCriteria(index);
+
+    /*
+     * opening criteria
+     */
+    movmedOpeningCriteria(index);
+
+    //-------------------------------------------------------------------------------------------------
+
+    // Closing criteria
+
+    //-------------------------------------------------------------------------------------------------
     movmedCheckOpenOrders(index);
 }
 
