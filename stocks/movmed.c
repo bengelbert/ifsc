@@ -73,7 +73,6 @@ extern string MagicNumbers = "Set different magicnumber for each timeframe of a 
 
 static int gblHaltBuy[MAX_PERIODS] = {0, 0};
 static int gblHaltSell[MAX_PERIODS] = {0, 0};
-static int gblMagicNumber[MAX_PERIODS] = {103, 206, 412};
 static int gblMa1Period = 16;
 static int gblMa1Shift = 8;
 static int gblMa1Method = MODE_SMA;
@@ -88,14 +87,11 @@ static int gblSlip = 5;
 static int gblSlippage[MAX_PERIODS] = {0, 0};
 static int gblSpread;
 static int gblStopMultd[MAX_PERIODS] = {0, 0};
-static int gblTimeFrame[MAX_PERIODS] = {PERIOD_D1, PERIOD_W1, PERIOD_MN1};
 
 static bool gblBuySignal[MAX_PERIODS] = {0, 0};
 static bool gblCloseSell[MAX_PERIODS] = {0, 0};
 static bool gblCloseBuy[MAX_PERIODS] = {0, 0};
 static bool gblSellSignal[MAX_PERIODS] = {0, 0};
-static bool gblAllowBuy[MAX_PERIODS] = {false, true, true};
-static bool gblAllowSell[MAX_PERIODS] = {false, true, true};
 
 static double gblLots[MAX_PERIODS] = {0, 0};
 static double gblMA1_bc[MAX_PERIODS] = {0, 0};
@@ -105,12 +101,20 @@ static double gblMA2_bc[MAX_PERIODS] = {0, 0};
 static double gblMA2_bp[MAX_PERIODS] = {0, 0};
 static double gblMA2_bl[MAX_PERIODS] = {0, 0};
 static double gblMedCandles[MAX_PERIODS] = {0, 0};
-static double gblMedCandlesFactor[MAX_PERIODS] = {1.25, 1.25, 1.25};
 static double gblPercentage[MAX_PERIODS] = {0, 0};
 static double gblSL[MAX_PERIODS] = {0, 0};
 static double gblTP[MAX_PERIODS] = {0, 0};
+static double gblTradeGain[MAX_PERIODS] = {0, 0};
+static double gblTradeLoss[MAX_PERIODS] = {0, 0};
 
 static string gblFreeze[MAX_PERIODS] = {"", ""};
+
+//Configs
+static int gblMagicNumber[MAX_PERIODS] = {103, 206, 412};
+static int gblTimeFrame[MAX_PERIODS] = {PERIOD_D1, PERIOD_W1, PERIOD_MN1};
+static bool gblAllowBuy[MAX_PERIODS] = {true, true, true};
+static bool gblAllowSell[MAX_PERIODS] = {true, true, true};
+static double gblMedCandlesFactor[MAX_PERIODS] = {1.25, 1.25, 1.25};
 
 /******************************************************************************/
 
@@ -197,8 +201,11 @@ int movmedCheckBuyOrders(int index)
 
     gblFreeze[index] = "Buying trend";
 
+    gblTradeGain[index] = (OrderTakeProfit() - OrderOpenPrice()) / Point * OrderLots() + OrderSwap();
+    gblTradeLoss[index] = (OrderStopLoss() - OrderOpenPrice()) / Point * OrderLots() + OrderSwap();
+
     if (CloseOnReverseSignal == true) {
-        if (gblCloseBuy[index] == true && OrderStopLoss() >= OrderOpenPrice()) {
+        if (gblCloseBuy[index] == true) {
             OrderClose(OrderTicket(), OrderLots(), Bid, gblSlippage[index], CLR_NONE);
         }
     }
@@ -264,8 +271,11 @@ int movmedCheckSellOrders(int index)
 
     gblFreeze[index] = "Selling trend";
 
+    gblTradeGain[index] = (OrderOpenPrice() - OrderTakeProfit()) / Point  * OrderLots() + OrderSwap();
+    gblTradeLoss[index] = (OrderOpenPrice() - OrderStopLoss()) / Point * OrderLots() + OrderSwap();
+
     if (CloseOnReverseSignal == true) {
-        if (gblCloseSell[index] == true && OrderStopLoss() <= OrderOpenPrice()) {
+        if (gblCloseSell[index] == true) {
             OrderClose(OrderTicket(), OrderLots(), Ask, gblSlippage[index], CLR_NONE);
         }
     }
@@ -442,7 +452,6 @@ int movmedOpeningCriteria(int index)
     string ma1;
     string ma2;
     string ma3;
-    string ma4;
 
     if ((gblMA1_bc[index] < gblMA2_bc[index]) && (gblMA1_bp[index] < gblMA2_bp[index]) && (gblMA1_bl[index] > gblMA2_bl[index])) {
         gblBuySignal[index] = true;
@@ -469,14 +478,8 @@ int movmedOpeningCriteria(int index)
         ma3 = "--";
     }
 
-    if (gblFreeze[index] != "Buying trend") {
-        ma4 = "ok";
-    } else {
-        ma4 = "--";
-    }
-
     ObjectSetText("label_buy"+index,
-        "Buy["+index+"]: " + ma4 + " || " +
+        "Buy["+index+"]: " +
         "" + ma3 + " | " +
         "" + ma2 + " | " +
         "" + ma1 + " | ",
@@ -505,14 +508,8 @@ int movmedOpeningCriteria(int index)
         ma3 = "--";
     }
 
-    if (gblFreeze[index] != "Selling trend") {
-        ma4 = "ok";
-    } else {
-        ma4 = "--";
-    }
-
     ObjectSetText("label_sell"+index,
-        "Sell["+index+"]: " + ma4 + " || " +
+        "Sell["+index+"]: "+
         "" + ma3 + " | " +
         "" + ma2 + " | " +
         "" + ma1 + " | ",
@@ -551,8 +548,8 @@ int movmedStart(int index)
     gblMedCandles[index] = 0;
 
     for (i = 21; i != 0; i--) {
-        high = iHigh(Symbol(), gblTimeFrame[index], index);
-        low = iLow(Symbol(), gblTimeFrame[index], index);
+        high = iHigh(Symbol(), gblTimeFrame[index], i);
+        low = iLow(Symbol(), gblTimeFrame[index], i);
         lenCandle = high - low;
         gblMedCandles[index] += lenCandle;
     }
@@ -561,6 +558,10 @@ int movmedStart(int index)
     gblMedCandles[index] /= Point;
     gblMedCandles[index] /= gblMedCandlesFactor[index];
 
+    if (gblSpread > 40) {
+        gblSpread = 40;
+    }
+        
     gblStopMultd[index] = gblMedCandles[index] / gblSpread;
 
     if (gblStopMultd[index] == 0) {
@@ -580,12 +581,11 @@ int movmedStart(int index)
     }
 
     ObjectSetText("label_" + index,
-        "Med(" + DoubleToStr(gblMedCandles[index], 0) + ") " +
-        "TP(" + DoubleToStr(gblTP[index], 0) + ") " +
         "SL(" + DoubleToStr(gblSL[index], 0) + ") " +
         "Lots(" + DoubleToStr(gblLots[index], 2) + ") " +
         "Perc(" + DoubleToStr(gblPercentage[index], 2) + "%) " +
-        "Mult(" + gblStopMultd[index] + ") ",
+        "Gain(" + DoubleToStr(gblTradeGain[index], 2) + ") "+
+        "Loss(" + DoubleToStr(gblTradeLoss[index], 2) + ") ",
         7, "Arial", DarkOrange);
 
     gblPercentage[index] = 0;
