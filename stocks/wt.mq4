@@ -8,7 +8,8 @@
 
 #define FIBO_NAME   "fibo"
 #define INFO_NAME   "info"
-#define TREND_NAME  "trend"
+#define TREND_START "trend_start"
+#define TREND_STOP  "trend_stop"
 
 static int gModeSpread = 0;
 
@@ -40,8 +41,13 @@ int init()
     ObjectSet(FIBO_NAME, OBJPROP_FIRSTLEVEL+3, 0.67);
     ObjectSet(FIBO_NAME, OBJPROP_FIRSTLEVEL+4, 1.0);
 
-    ObjectDelete(TREND_NAME);
-    ObjectCreate(TREND_NAME, OBJ_TREND, 0, TimeCurrent(), high, TimeCurrent(), low);
+    ObjectDelete(TREND_START);
+    ObjectCreate(TREND_START, OBJ_TREND, 0, TimeCurrent(), high, TimeCurrent(), high);
+    ObjectSet(TREND_START, OBJPROP_COLOR, Green);
+
+    ObjectDelete(TREND_STOP);
+    ObjectCreate(TREND_STOP, OBJ_TREND, 0, TimeCurrent(), low, TimeCurrent(), low);
+    ObjectSet(TREND_STOP, OBJPROP_COLOR, Red);
     
     ObjectCreate(INFO_NAME, OBJ_LABEL, 0, 0, 0); // Creating obj.
     ObjectSet(INFO_NAME, OBJPROP_CORNER, 0); // Reference corner
@@ -79,46 +85,67 @@ int start()
 
 int wtCheckDirection()
 {
-    datetime time1 = 0;
-    datetime time2 = 0;
+    datetime timePivotEnd = 0;
+    datetime timePivotInit = 0;
+    int barPivotStart = 0;
     
-    time1 = ObjectGet(FIBO_NAME, OBJPROP_TIME1);
-    time2 = ObjectGet(FIBO_NAME, OBJPROP_TIME2);
+    timePivotEnd = ObjectGet(FIBO_NAME, OBJPROP_TIME1);
+    timePivotInit = ObjectGet(FIBO_NAME, OBJPROP_TIME2);
     
-    if (time1 > time2) {
+    if (timePivotEnd < timePivotInit) {
         gBuySignal = true;
     } else {
         gBuySignal = false;
     }
     
-    if (time2 > time1) {
+    if (timePivotInit < timePivotEnd) {
         gSellSignal = true;
     } else {
         gSellSignal = false;
     }
     
     if (gBuySignal == true) {
-        gPivotEnd = ObjectGet(FIBO_NAME, OBJPROP_PRICE1);
-        gPivotInit = ObjectGet(FIBO_NAME, OBJPROP_PRICE2);
-        gPivotLen = (gPivotEnd - gPivotInit) / Point;
-        gInfoDirection = "Buy";
-        ObjectSet(TREND_NAME, OBJPROP_TIME1, time1);
-        ObjectSet(TREND_NAME, OBJPROP_PRICE1, gPivotEnd);
-    } if (gSellSignal == true) {
+        
         gPivotEnd = ObjectGet(FIBO_NAME, OBJPROP_PRICE2);
         gPivotInit = ObjectGet(FIBO_NAME, OBJPROP_PRICE1);
+        gPivotLen = (gPivotEnd - gPivotInit) / Point;
+        gInfoDirection = "Buy";
+                
+        ObjectSet(TREND_START, OBJPROP_TIME1, timePivotEnd);
+        ObjectSet(TREND_START, OBJPROP_PRICE1, gPivotEnd);
+        ObjectSet(TREND_STOP, OBJPROP_TIME1, timePivotInit);
+        ObjectSet(TREND_STOP, OBJPROP_PRICE1, gPivotInit);
+        
+        
+        
+    } else if (gSellSignal == true) {
+        
+        gPivotEnd = ObjectGet(FIBO_NAME, OBJPROP_PRICE1);
+        gPivotInit = ObjectGet(FIBO_NAME, OBJPROP_PRICE2);
         gPivotLen = (gPivotInit - gPivotEnd) / Point;
         gInfoDirection = "Sell";
-        ObjectSet(TREND_NAME, OBJPROP_TIME1, time1);
-        ObjectSet(TREND_NAME, OBJPROP_PRICE1, gPivotEnd);
+      
+        barPivotStart = iHighest(Symbol(), 0, MODE_HIGH, iBarShift(Symbol(), 0, timePivotEnd, 0)-1, 1);
+        
+        Print("bar", barPivotStart);
+        Print("ibar", iBarShift(Symbol(), 0, timePivotEnd, 0));
+      
+        ObjectSet(TREND_START, OBJPROP_TIME1, timePivotEnd);
+        ObjectSet(TREND_START, OBJPROP_PRICE1, gPivotEnd);
+        ObjectSet(TREND_START, OBJPROP_TIME2, iTime(Symbol(), 0, barPivotStart));
+        ObjectSet(TREND_START, OBJPROP_PRICE2, iLow(Symbol(), 0, barPivotStart));
+        
+        ObjectSet(TREND_STOP, OBJPROP_TIME1, timePivotInit);
+        ObjectSet(TREND_STOP, OBJPROP_PRICE1, gPivotInit);
+        ObjectSet(TREND_STOP, OBJPROP_TIME2, iTime(Symbol(), 0, barPivotStart));
+        ObjectSet(TREND_STOP, OBJPROP_PRICE2, iHigh(Symbol(), 0, barPivotStart));
+        
     } else {
         gPivotEnd = 0;
         gPivotLen = 0;
         gPivotInit = 0;
         gInfoDirection = "---";
     }
-    
-    
 }
 
 int wtCheckOpenOrders()
