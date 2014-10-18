@@ -1,0 +1,17 @@
+
+# Cross-compiling can only be done with v2.6 or later
+cmake_minimum_required(VERSION 2.6)
+
+# Set the target AVR device
+set(AVR_TARGET_DEVICE my_device)
+
+# Set the GCC flags required
+set(CMAKE_C_FLAGS "-g -Wall -Os -mmcu=${AVR_TARGET_DEVICE}")
+set(CMAKE_VERBOSE_MAKEFILE true)
+set(CMAKE_C_OUTPUT_EXTENSION ".o")
+
+# Allow assembly files to be built
+# ENABLE_LANGUAGE(ASM)
+
+# Make the executable
+add_executable(beos.elf main.c beos.c)

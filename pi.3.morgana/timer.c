@@ -41,21 +41,23 @@
 /*
  * Type definitions
  */
-typedef struct _timer       timer_t;
-typedef struct _timer_task  timer_task_t;
+typedef struct _timer timer_t;
+typedef struct _timer_task timer_task_t;
 typedef struct _timer0_regs timer0_regs_t;
 
-struct _timer_task {
-    uint8_t        id;
-    uint8_t        state;
-    void*          data;
+struct _timer_task
+{
+    uint8_t id;
+    uint8_t state;
+    void* data;
     timer_handle_t handle;
-    uint16_t       timeout;
+    uint16_t timeout;
 };
 
 /******************************************************************************/
 
-struct _timer0_regs {
+struct _timer0_regs
+{
     volatile uint8_t tccra;
     volatile uint8_t tccrb;
     volatile uint8_t tcnt;
@@ -65,18 +67,19 @@ struct _timer0_regs {
 
 /******************************************************************************/
 
-struct _timer {
+struct _timer
+{
     volatile uint32_t ticks;
-    
+
     volatile uint8_t n_tasks;
-    timer_task_t     task[TIMER_MAX_TASKS];
+    timer_task_t task[TIMER_MAX_TASKS];
 };
 
 /******************************************************************************/
 /*
  * Funtion Prototypes
  */
-static void timer_low_level_init    (void);
+static void timer_low_level_init(void);
 
 /******************************************************************************/
 /*
@@ -97,117 +100,126 @@ static timer_t timer = {
 static timer0_regs_t* t0 = TIMER0(TIMER0_BASE);
 
 /******************************************************************************/
+
 /*
  * Function definitions
  */
-static void
-timer_low_level_init(void)
+static void timer_low_level_init(void)
 {
     t0->tccrb = TCCR0B_PRESCALER_256;
-    t0->tcnt  = 0;
-    
+    t0->tcnt = 0;
+
     sbi(TIMSK0, TOIE0);
 }
 
 /******************************************************************************/
 
-uint8_t
-timer_timeout_add(
-    uint16_t       timeout, 
-    timer_handle_t handle, 
-    timer_data_t   data)
+uint8_t timer_timeout_add(uint16_t timeout,
+                          timer_handle_t handle,
+                          timer_data_t data)
 {
-    uint8_t       i    = TIMER_MAX_TASKS;
+    uint8_t i = TIMER_MAX_TASKS;
     timer_task_t* task = NULL;
 
     if (timeout == 0) return -1;
     if (handle == NULL) return -1;
     if (timer.n_tasks >= TIMER_MAX_TASKS) return -1;
-    
+
     task = &(timer.task[0]);
-    
-    do {
-        if (task->state == TIMER_STATE_NULL || 
-            task->state == TIMER_STATE_TERMINATED) {
-            task->id      = i;
-            task->data    = data;
-            task->handle  = handle;
-            task->state   = TIMER_STATE_WAITING;
+
+    do
+    {
+        if (task->state == TIMER_STATE_NULL ||
+            task->state == TIMER_STATE_TERMINATED)
+        {
+            task->id = i;
+            task->data = data;
+            task->handle = handle;
+            task->state = TIMER_STATE_WAITING;
             task->timeout = timeout;
             timer.n_tasks++;
             break;
-        } else {
+        }
+        else
+        {
             task++;
         }
-    } while (--i != 0);
-    
+    }
+    while (--i != 0);
+
     return i;
 }
 
 /******************************************************************************/
 
-void
-timer_source_remove(uint8_t id)
+void timer_source_remove(uint8_t id)
 {
-    uint8_t       i    = timer.n_tasks;
+    uint8_t i = timer.n_tasks;
     timer_task_t* task = NULL;
-    
+
     if (i == 0) return;
-    
+
     task = &(timer.task[0]);
-    
-    do {
-        if (task->id == id) {
-            task->id      = 0;
-            task->data    = 0;
-            task->handle  = NULL;
-            task->state   = TIMER_STATE_TERMINATED;
+
+    do
+    {
+        if (task->id == id)
+        {
+            task->id = 0;
+            task->data = 0;
+            task->handle = NULL;
+            task->state = TIMER_STATE_TERMINATED;
             task->timeout = 0;
             timer.n_tasks--;
             break;
-        } else {
+        }
+        else
+        {
             task++;
         }
-    } while (i != 0);
+    }
+    while (i != 0);
 }
 
 /******************************************************************************/
 
-void
-timer_init(void)
+void timer_init(void)
 {
     timer_low_level_init();
 
     timer.n_tasks = 0;
-    timer.ticks   = 0;
+    timer.ticks = 0;
 }
 
 /******************************************************************************/
 
-void
-timer_loop_run(void)
+void timer_loop_run(void)
 {
-    uint8_t       i    = 0;
+    uint8_t i = 0;
     timer_task_t* task = NULL;
 
     sei();
-    
-    for (;;) {
-        
+
+    for (;;)
+    {
         task = &(timer.task[0]);
-        
-        for (i = timer.n_tasks; i != 0; i--, task++) {
-            
-            if (task->state == TIMER_STATE_RUNNING) {
+
+        for (i = timer.n_tasks; i != 0; i--, task++)
+        {
+            if (task->state == TIMER_STATE_RUNNING)
+            {
                 /* execute callback function */
-                if (task->handle(task->data)) {
+                if (task->handle(task->data))
+                {
                     /* if return is true, put on standby state */
                     task->state = TIMER_STATE_WAITING;
-                } else {
+                }
+                else
+                {
                     /* else put on terminated state and free position */
                     task->state = TIMER_STATE_TERMINATED;
                 }
-            } 
+            }
         }
     }
 }
@@ -216,18 +228,20 @@ timer_loop_run(void)
 
 ISR(TIMER0_OVF_vect)
 {
-    timer_task_t*    task = timer.task;
-    register uint8_t i    = 0;
+    timer_task_t* task = timer.task;
+    register uint8_t i = 0;
 
     t0->tcnt = TCNT0_RATE_1MS;
-    
+
     timer.ticks++;
 
-    for (i = timer.n_tasks; i != 0; i--) {
-        if (task->state == TIMER_STATE_WAITING && !(timer.ticks % task->timeout)) {
+    for (i = timer.n_tasks; i != 0; i--)
+    {
+        if (task->state == TIMER_STATE_WAITING && !(timer.ticks % task->timeout))
+        {
             task->state = TIMER_STATE_RUNNING;
-        } 
-        
+        }
+
         task++;
     }
 }
