@@ -31,12 +31,13 @@ uint16_t main_avr_init(void)
 int16_t main_get_ms_tick(void)
 {
     int16_t time_in_mill;
+#ifndef __AVR
     struct timeval tv;
     
     gettimeofday(&tv, NULL);
 
     time_in_mill = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;    
-    
+#endif    
     return time_in_mill;
 }
 
