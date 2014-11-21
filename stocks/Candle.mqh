@@ -20,6 +20,8 @@ public:
     Candle();
     ~Candle();
 
+    double getEMA(int period, int shift=0)  { return(NormalizeDouble(iMA(Symbol(), getTimeFrame(), period, 0, MODE_EMA, PRICE_CLOSE, shift), Digits)); };
+    double getSMA(int period, int shift=0)  { return(NormalizeDouble(iMA(Symbol(), getTimeFrame(), period, 0, MODE_SMA, PRICE_CLOSE, shift), Digits)); };
     int    getAverageCandleSize();    
     double getClose(int shift=0) { return(NormalizeDouble(iClose(Symbol(), getTimeFrame(), shift), Digits)); };
     double getLow(int shift=0) { return(NormalizeDouble(iLow(Symbol(), getTimeFrame(), shift), Digits)); };

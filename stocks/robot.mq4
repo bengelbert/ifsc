@@ -48,8 +48,8 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
-    sarM1.onTick();
-    sarM5.onTick();
+    //sarM1.onTick();
+    //sarM5.onTick();
     sarM15.onTick();
     sarM30.onTick();
     sarH1.onTick();
