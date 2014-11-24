@@ -20,6 +20,7 @@ public:
     Candle();
     ~Candle();
 
+    double getVariance(int period, int shift=0);
     double getEMA(int period, int shift=0)  { return(NormalizeDouble(iMA(Symbol(), getTimeFrame(), period, 0, MODE_EMA, PRICE_CLOSE, shift), Digits)); };
     double getSMA(int period, int shift=0)  { return(NormalizeDouble(iMA(Symbol(), getTimeFrame(), period, 0, MODE_SMA, PRICE_CLOSE, shift), Digits)); };
     int    getAverageCandleSize();    
@@ -65,3 +66,21 @@ int Candle::getAverageCandleSize(void)
 } 
 
 //+------------------------------------------------------------------+
+
+double Candle::getVariance(int period, int shift=0)
+{
+    double ma = 0;
+    double variance = 0;
+
+    ma = getSMA(period, shift);
+
+    for (int i = 0; i < period; i++)
+    {
+        variance += MathPow((getClose(i+shift)/Point - ma/Point), 2);
+    }
+
+    variance /= period;
+    variance *= Point;
+
+    return (variance);
+}

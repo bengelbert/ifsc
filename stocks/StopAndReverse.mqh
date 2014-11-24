@@ -52,7 +52,8 @@ int StopAndReverse::onTick(void)
                 "lots: ", DoubleToStr(getLots(), 2),"\n",
                 "AverageCandleSize(", getTotalCandles(), "): ", getAverageCandleSize(),"\n",
                 "Spread: ", getSpread(),"\n",
-                "EMA: ", getEMA(21), "\n",
+                "SMA: ", getSMA(21), "|", getClose(), "\n",
+                "Var: ", getVariance(9, 0), "\n",
                 "div: ", DoubleToStr((double) getAverageCandleSize()/ (double)getSpread(), 2));
 
     return (0);
@@ -90,7 +91,7 @@ int StopAndReverse::findReverse(void)
             if (getTotalOrders() == 0 && 
                 getLots() != 0 && 
                 getClose() < getSMA(21) &&
-                NormalizeDouble((double)getAverageCandleSize()/(double)getSpread(), 0) > 3.0)
+                NormalizeDouble((double)getAverageCandleSize()/(double)getSpread(), 2) >= 3.0)
             {
                 ticket = OrderSend(Symbol(), OP_SELL, getLots(), Bid, 3, 0, 0, getName(), TRADEBASE_MAGIC, 0, Green);
             }
@@ -106,7 +107,7 @@ int StopAndReverse::findReverse(void)
             if (getTotalOrders() == 0 && 
                 getLots() != 0 &&
                 getClose() > getSMA(21) &&
-                NormalizeDouble((double)getAverageCandleSize()/(double)getSpread(), 0) > 3.0)
+                NormalizeDouble((double)getAverageCandleSize()/(double)getSpread(), 2) >= 3.0)
             {
                 ticket = OrderSend(Symbol(), OP_BUY, getLots(), Ask, 3, 0, 0, getName(), TRADEBASE_MAGIC, 0, Green);
             }
