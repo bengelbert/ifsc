@@ -1,9 +1,12 @@
 #property copyright "trevone"
 #property link "http://codebase.mql4.com/9050" 
+
+#include "Trade.mqh"
+
 string version = "Milestone 22.5";
 extern string GROWTH = "............................................................................................................."; 
 extern string MilestoneGrowth_Description = "..........Limit trading for the RefreshHours if the closed profit for this period is greater than the MilestoneGrowth ratio of the AccountBalance";
-extern double MilestoneGrowth = 0.006; 
+//extern double MilestoneGrowth = 0.006; 
 extern string SafeProfit_Description = "..........If SafeExits is enabled then take profit at this ratio of the AccountSize if the signal reverses";
 extern double SafeProfit =  0.003;
 extern string StopGrowth_Description = "..........Only stop trades if the history is greater than this ratio of the AccountBalance";
@@ -104,9 +107,9 @@ extern string MARGIN = "........................................................
 extern string MinMarginLevel_Description = "..........Only open new trades if the AccountEquity divided by AccountBalance is above this level";
 extern double MinMarginLevel = 0.5;
 extern string MarginUsage_Description = "..........Use this amount of the AccountBalance for the Front System lotsize calculation";
-extern double MarginUsage = 0.003;
+//extern double MarginUsage = 0.003;
 extern string BackupMargin_Description = "..........Use this amount of the AccountBalance for the Back System lotsize calculation";
-extern double BackupMargin = 0.001; 
+//extern double BackupMargin = 0.001; 
 extern string MinLots_Description = "..........All trades will be at least this lotsize";
 extern double MinLots = 0.01;
 extern string TRADE = ".............................................................................................................";  
@@ -129,6 +132,8 @@ extern int MA2Period = 40;
 extern int MAShiftCheck = 10; 
 extern int MATimeFrame = 0; 
 
+static Trade daytradeObj;
+
 double slippage, marginRequirement, lotSize, backupLotSize, totalHistoryProfit, totalProfit, totalLoss, symbolHistory, ical, eATR, MA1Cur, MA1Prev, MA2Cur, MA2Prev,MA3Cur, MA3Prev; 
 
 int digits, totalTrades, totalBackupTrades; 
@@ -145,7 +150,7 @@ bool multipleMargin = false;
 int MaxStartTrades = 1;   
 int ATRShift = 0;  
 int ADXShift = 0; 
-int lastTradeTime = 0;
+datetime lastTradeTime = 0;
 int MMAShift = 0;
 int MAShift = 0; 
 int totalHistory = 100;
@@ -176,23 +181,34 @@ string calenadarCurrency = "";
 string calenadarText = "";   
 string signalComment = "";    
 
-int init(){   
+/********************************************************************/
+
+int init()
+{   
+   daytradeObj.setAccountBalance(AccountBalance());
+
    prepare();   
-   return( 0 );
+   
+   return(0);
 } 
 
-double marginCalculate( string symbol, double volume ){ 
-   return ( MarketInfo( symbol, MODE_MARGINREQUIRED ) * volume ) ; 
+/********************************************************************/
+
+double marginCalculate(string symbol, double volume)
+{ 
+   return (MarketInfo(symbol, MODE_MARGINREQUIRED) * volume) ; 
 } 
+
+/********************************************************************/
 
 void lotSize(){   
-   spread = ( Ask - Bid ) / pipPoints;
-   slippage = NormalizeDouble( ( eATR / pipPoints ) * DynamicSlippage, 1 );
-   marginRequirement = marginCalculate( Symbol(), BaseLotSize ); 
-   lotSize = NormalizeDouble( ( AccountBalance() * MarginUsage / marginRequirement ) * BaseLotSize, 2 ) ; 
-   backupLotSize = NormalizeDouble( ( AccountBalance() * BackupMargin / marginRequirement ) * BaseLotSize, 2 ) ;
-   
-   
+   double tick_value = (double) MarketInfo(Symbol(), MODE_TICKVALUE);
+
+   spread = (Ask - Bid) / pipPoints;
+   slippage = NormalizeDouble((eATR / pipPoints) * DynamicSlippage, 1 );
+   marginRequirement = marginCalculate(Symbol(), BaseLotSize); 
+   lotSize = NormalizeDouble(((daytradeObj.getAccountBalance() * daytradeObj.getMarginUsage() / marginRequirement) * BaseLotSize) / tick_value, 2) ; 
+   backupLotSize = NormalizeDouble(((daytradeObj.getAccountBalance() * (daytradeObj.getMarginUsage() / 3) / marginRequirement) * BaseLotSize) / tick_value, 2 ) ;
      
    if( lotSize < MinLots ) lotSize = MinLots;   
    if( backupLotSize < MinLots ) backupLotSize = MinLots;   
@@ -201,28 +217,33 @@ void lotSize(){
 void milestone(){
    multipleMargin = false;
    
-   if(AccountEquity() / AccountBalance() < MinMarginLevel && totalProfit + totalLoss > 0 ) multipleMargin = true;
+   if(AccountEquity() / daytradeObj.getAccountBalance() < MinMarginLevel && totalProfit + totalLoss > 0 ) multipleMargin = true;
    if( AccountMargin() > 0 ) marginLevel = AccountEquity() / AccountMargin() * 100  ; 
    if( totalTrades == 0 ) marginLevel = 0;  
    if( MathMod( TimeCurrent(), 3600 * RefreshHours ) <= 300 ){ 
       if( turn == 0 ) totalDays = totalDays + 1;
       turn = 1;
-      if (milestoneGrowth / AccountBalance() > MilestoneGrowth ) {
+      if (milestoneGrowth / daytradeObj.getAccountBalance() > daytradeObj.getMilestoneGrowth() ) {
          Print( "Milestone growth reached " ,DoubleToStr(  dailyTargets + 1, 0 ) + " / " + DoubleToStr(  totalDays, 0 ) );
          dailyTargets = dailyTargets + 1;
          turn = 1;
       } 
       milestoneGrowth = 0;  
+      daytradeObj.setAccountBalance(AccountBalance());
       if( totalProfit + totalLoss > 0 ) closeAll(); 
    } else {
       turn = 0;
    }
-   if( SafeGrowth ) if(milestoneGrowth / AccountBalance() > MilestoneGrowth  ) closeAll();
-   if( AccountBalance() > maxEquity ) maxEquity = AccountBalance(); 
+   if (SafeGrowth) 
+      if(milestoneGrowth / daytradeObj.getAccountBalance() > daytradeObj.getMilestoneGrowth()) 
+         closeAll();
+      
+   if(daytradeObj.getAccountBalance() > maxEquity) 
+      maxEquity = daytradeObj.getAccountBalance(); 
 }
 
 void setPipPoint(){
-   digits = MarketInfo( Symbol(), MODE_DIGITS );
+   digits = (int) MarketInfo( Symbol(), MODE_DIGITS );
    if( digits == 3 ) pipPoints = 0.010;
    else if( digits == 5 ) pipPoints = 0.00010;
 } 
@@ -235,12 +256,12 @@ void closeAll( string type = "none" ){
          RefreshRates();
          if( ( OrderStopLoss() == 0 && (OrderProfit() + OrderSwap()) > 0 && type == "profits" ) || type == "none" ){
             if( OrderType() == OP_BUY ){ 
-               if (!OrderClose( OrderTicket(), OrderLots(), Bid, slippage, Red )) return;
+               if (!OrderClose( OrderTicket(), OrderLots(), Bid, (int) slippage, Red )) return;
                milestoneGrowth = milestoneGrowth + OrderProfit() + OrderSwap();
                lastTradeTime = TimeCurrent();
             }
             if( OrderType() == OP_SELL ) {
-               if (!OrderClose( OrderTicket(), OrderLots(), Ask, slippage, Red )) return;
+               if (!OrderClose( OrderTicket(), OrderLots(), Ask, (int) slippage, Red )) return;
                milestoneGrowth = milestoneGrowth + OrderProfit() + OrderSwap();
                lastTradeTime = TimeCurrent();
             }
@@ -252,7 +273,12 @@ void closeAll( string type = "none" ){
 void prepareHistory(){
    symbolHistory = 0;
    totalHistoryProfit = 0;
-   milestoneGrowth = 0;
+   
+   if (MathMod(TimeCurrent(), 3600 * RefreshHours) > 300)
+   {
+      milestoneGrowth = 0;
+   }
+      
    for( int iPos = OrdersHistoryTotal() - 1; iPos > ( OrdersHistoryTotal() - 1 ) - totalHistory; iPos-- ){
       if (!OrderSelect( iPos, SELECT_BY_POS, MODE_HISTORY )) return;
       double QueryHistoryDouble = ( double ) QueryHistory;
@@ -261,7 +287,10 @@ void prepareHistory(){
          totalHistoryProfit = totalHistoryProfit + OrderProfit() + OrderSwap();
          symbolHistory = symbolHistory + 1;
          
-         if (TimeDay(TimeCurrent()) == TimeDay(OrderCloseTime()) && TimeMonth(TimeCurrent()) == TimeMonth(OrderCloseTime()) && TimeYear(TimeCurrent()) == TimeYear(OrderCloseTime()))
+         if (TimeDay(TimeCurrent()) == TimeDay(OrderCloseTime()) && 
+             TimeMonth(TimeCurrent()) == TimeMonth(OrderCloseTime()) && 
+             TimeYear(TimeCurrent()) == TimeYear(OrderCloseTime()) &&
+             MathMod(TimeCurrent(), 3600 * RefreshHours) > 300)
          {
             milestoneGrowth += OrderProfit() + OrderSwap();
             lastTradeTime = OrderCloseTime();
@@ -370,7 +399,7 @@ void sendOpen(){
          if( basketNumberType != OP_BUY ) basketCount = 0;
          if( basketCount < MaxTrades ){
             if( AccountFreeMarginCheck( Symbol(), OP_BUY, lotSize ) <= 0 || GetLastError() == 134 ) return;
-            if (OrderSend( Symbol(), OP_BUY, lotSize, Ask, slippage, 0, 0, version + " " + signalComment + " Min " + DoubleToStr( basketNumber, 0 ), MAGIC , 0, Green) < 0) return;
+            if (OrderSend( Symbol(), OP_BUY, lotSize, Ask, (int) slippage, 0, 0, version + " " + signalComment + " Min " + DoubleToStr( basketNumber, 0 ), MAGIC , 0, Green) < 0) return;
             if( basketNumberType != OP_BUY ) basketNumber = basketNumber + 1; 
             basketCount = basketCount + 1; 
             openType = OP_BUY;   
@@ -380,7 +409,7 @@ void sendOpen(){
          if( basketNumberType != OP_SELL ) basketCount = 0;
          if( basketCount < MaxTrades ){
             if( AccountFreeMarginCheck( Symbol(), OP_SELL, lotSize ) <= 0 || GetLastError() == 134 ) return;
-            if (OrderSend( Symbol(), OP_SELL, lotSize, Bid, slippage, 0, 0, version + " " + signalComment + " Min " + DoubleToStr( basketNumber, 0 ), MAGIC , 0, Green) < 0) return;
+            if (OrderSend( Symbol(), OP_SELL, lotSize, Bid, (int) slippage, 0, 0, version + " " + signalComment + " Min " + DoubleToStr( basketNumber, 0 ), MAGIC , 0, Green) < 0) return;
             if( basketNumberType != OP_SELL ) basketNumber = basketNumber + 1;  
             basketCount = basketCount + 1;  
             openType = OP_SELL;   
@@ -404,10 +433,10 @@ void openPosition(){
 void sendBack(){
    if( ( ContinueTrading || ( !ContinueTrading && totalBackupTrades > 0 ) ) && ( totalBackupTrades < MaxTrades - MaxStartTrades ) ) {   
       if( !nearLongPosition && bullish && sellLots == 0 ) {
-         if (OrderSend( Symbol(), OP_BUY, backupLotSize, Ask, slippage, 0, 0,  version + " " + signalComment + " Backup " + DoubleToStr( basketNumber, 0 ), MAGIC , 0, Green) < 0) return; 
+         if (OrderSend( Symbol(), OP_BUY, backupLotSize, Ask, (int) slippage, 0, 0,  version + " " + signalComment + " Backup " + DoubleToStr( basketNumber, 0 ), MAGIC , 0, Green) < 0) return; 
          lastTradeTime = TimeCurrent();
       } else if( !nearShortPosition && bearish && buyLots == 0 ){
-         if (OrderSend( Symbol(), OP_SELL, backupLotSize, Bid, slippage, 0, 0,  version + " " + signalComment + " Backup " + DoubleToStr( basketNumber, 0 ), MAGIC , 0, Green) < 0) return; 
+         if (OrderSend( Symbol(), OP_SELL, backupLotSize, Bid, (int) slippage, 0, 0,  version + " " + signalComment + " Backup " + DoubleToStr( basketNumber, 0 ), MAGIC , 0, Green) < 0) return; 
          lastTradeTime = TimeCurrent();
       }  
    }
@@ -426,20 +455,20 @@ void backSystem(){
  
 void managePositions(){ 
    if( totalHistoryProfit < 0 && totalProfit > MathAbs( maxEquity - totalHistoryProfit ) * BasketProfit ) closeAll( "profits" );
-   else if( totalTrades > 1 && totalProfit + totalLoss > /*OpenProfit*/MilestoneGrowth * AccountBalance() ) closeAll();
-   else if( SafeExits && totalTrades > 0 && totalProfit + totalLoss > /*SafeProfit*/MilestoneGrowth/2 * AccountBalance() && ( ( bullish && openType == OP_SELL ) || ( bearish && openType == OP_BUY ) ) ) closeAll(); 
+   else if( totalTrades > 1 && totalProfit + totalLoss > /*OpenProfit*/daytradeObj.getMilestoneGrowth() * daytradeObj.getAccountBalance() ) closeAll();
+   else if( SafeExits && totalTrades > 0 && totalProfit + totalLoss > /*SafeProfit*/(daytradeObj.getMilestoneGrowth() / 2) * daytradeObj.getAccountBalance() && ( ( bullish && openType == OP_SELL ) || ( bearish && openType == OP_BUY ) ) ) closeAll(); 
    else if( EnableCalendar && totalTrades > 0 && totalProfit + totalLoss > 0 && calenadarEventTime > LeadCalendarMinutes && ObjectDescription( "milestoneType1" ) == "until" && calenadarEventTime > 0 ) closeAll();
    else { 
       for( int i = OrdersTotal() - 1; i >= 0; i-- ) {
          if( OrderSelect( i, SELECT_BY_POS, MODE_TRADES ) == false ) break;  
          if( ( MAGIC > 0 && OrderMagicNumber() == MAGIC ) || OrderSymbol() == Symbol() ) {  
             if( totalTrades <= MaxStartTrades ){
-               if( OrderType() == OP_BUY && Bid > OrderOpenPrice() && (OrderProfit() + OrderSwap()) > /*MinProfit*/MilestoneGrowth * AccountBalance() && ( ( MinTrend && trendStrength < MinTrend * pipPoints ) || !CarryProfits ) ) {
-                  if (!OrderClose( OrderTicket(), OrderLots(), Bid, slippage, Red)) return; 
+               if( OrderType() == OP_BUY && Bid > OrderOpenPrice() && (OrderProfit() + OrderSwap()) > /*MinProfit*/daytradeObj.getMilestoneGrowth() * daytradeObj.getAccountBalance() && ( ( MinTrend && trendStrength < MinTrend * pipPoints ) || !CarryProfits ) ) {
+                  if (!OrderClose( OrderTicket(), OrderLots(), Bid, (int) slippage, Red)) return; 
                   milestoneGrowth = milestoneGrowth + OrderProfit() + OrderSwap();
                   lastTradeTime = TimeCurrent();
-               } else if( OrderType() == OP_SELL && Ask < OrderOpenPrice() && (OrderProfit() + OrderSwap()) > /*MinProfit*/MilestoneGrowth * AccountBalance() && ( ( CarryProfits && trendStrength > -MinTrend * pipPoints ) || !CarryProfits ) ){
-                  if (!OrderClose( OrderTicket(), OrderLots(), Ask, slippage, Red)) return;   
+               } else if( OrderType() == OP_SELL && Ask < OrderOpenPrice() && (OrderProfit() + OrderSwap()) > /*MinProfit*/daytradeObj.getMilestoneGrowth() * daytradeObj.getAccountBalance() && ( ( CarryProfits && trendStrength > -MinTrend * pipPoints ) || !CarryProfits ) ){
+                  if (!OrderClose( OrderTicket(), OrderLots(), Ask, (int) slippage, Red)) return;   
                   milestoneGrowth = milestoneGrowth + OrderProfit() + OrderSwap();
                   lastTradeTime = TimeCurrent();
                }
@@ -450,16 +479,17 @@ void managePositions(){
 }   
  
 void manageStops(){ 
-   if( EnableStop && TimeCurrent() - lastTradeTime > BasketSeconds && totalHistoryProfit > StopGrowth * AccountBalance() && ( totalProfit + totalLoss ) < 0 && MathAbs( totalProfit + totalLoss ) > RelativeStop * totalHistoryProfit ) closeAll(); 
+   if( EnableStop && TimeCurrent() - lastTradeTime > BasketSeconds && totalHistoryProfit > StopGrowth * daytradeObj.getAccountBalance() && ( totalProfit + totalLoss ) < 0 && MathAbs( totalProfit + totalLoss ) > RelativeStop * totalHistoryProfit ) closeAll(); 
    if( KillBasket && TimeCurrent() - lastTradeTime > KillSeconds && totalProfit + totalLoss > 0 ) closeAll();
-   if( SafeMilestone && ( milestoneGrowth + ( totalProfit + totalLoss ) ) / AccountBalance() > MilestoneGrowth && totalTrades > 0 ) closeAll();   
+   if( SafeMilestone && ( milestoneGrowth + ( totalProfit + totalLoss ) ) / daytradeObj.getAccountBalance() > daytradeObj.getMilestoneGrowth() && totalTrades > 0 ) closeAll();   
 }
  
 void update(){
+/*
    if( ObjectFind("MilestoneHUD1") == -1 ) ObjectCreate( "MilestoneHUD1", OBJ_LABEL, 0, 0, 0 );   
 	if( EnableCalendar ) ObjectSet( "MilestoneHUD1", OBJPROP_YDISTANCE, 90 ); 
    else ObjectSet( "MilestoneHUD1", OBJPROP_YDISTANCE, 20 ); 
-   ObjectSetText( "MilestoneHUD1", " Milestones: " + DoubleToStr(  dailyTargets, 0 ) + " of " + DoubleToStr( totalDays, 0 ) + ", Growth: " + DoubleToStr( milestoneGrowth / AccountBalance() * 100, 4 ) + "% of " + DoubleToStr( MilestoneGrowth * 100, 4 ) + "% ", 10, "Arial Bold", LightGray ); 
+   ObjectSetText( "MilestoneHUD1", " Milestones: " + DoubleToStr(  dailyTargets, 0 ) + " of " + DoubleToStr( totalDays, 0 ) + ", Growth: " + DoubleToStr( milestoneGrowth / daytradeObj.getAccountBalance() * 100, 4 ) + "% of " + DoubleToStr( daytradeObj.getMilestoneGrowth() * 100, 4 ) + "% ", 10, "Arial Bold", LightGray ); 
 	ObjectSet( "MilestoneHUD1", OBJPROP_XDISTANCE, 6 );
 	ObjectSet( "MilestoneHUD1", OBJPROP_COLOR, LightGray );  
    
@@ -467,10 +497,14 @@ void update(){
    ObjectSet( "MilestoneHUD2", OBJPROP_XDISTANCE, 6 );
    if( EnableCalendar ) ObjectSet( "MilestoneHUD2", OBJPROP_YDISTANCE, 110 ); 
    else ObjectSet( "MilestoneHUD2", OBJPROP_YDISTANCE, 40 ); 
+*/   
    string hedgeStatus = "No";
-   if(AccountEquity() / AccountBalance() < MinMarginLevel && totalProfit + totalLoss > 0 ) hedgeStatus = " Yes";
-   
-   ObjectSetText( "MilestoneHUD2", " Hed: " + hedgeStatus + ", Prof: " + DoubleToStr( totalProfit + totalLoss, 2 ) + ", Hist: " + DoubleToStr( totalHistoryProfit, 2 ) + ", Mg: " + DoubleToStr( AccountEquity() / AccountBalance() * 100, 1 ) + "%, Lots: " + DoubleToStr( buyLots + sellLots, 2 ), 10, "Arial Bold", LightGray );
+   if (AccountEquity() / daytradeObj.getAccountBalance() < MinMarginLevel && totalProfit + totalLoss > 0 ) 
+   {
+      hedgeStatus = " Yes";
+   }
+/*   
+   ObjectSetText( "MilestoneHUD2", " Hed: " + hedgeStatus + ", Prof: " + DoubleToStr( totalProfit + totalLoss, 2 ) + ", Hist: " + DoubleToStr( totalHistoryProfit, 2 ) + ", Mg: " + DoubleToStr( AccountEquity() / daytradeObj.getAccountBalance() * 100, 1 ) + "%, Lots: " + DoubleToStr( buyLots + sellLots, 2 ), 10, "Arial Bold", LightGray );
    
    if( ObjectFind("info") == -1 ) ObjectCreate( "MilestoneHUD3", OBJ_LABEL, 0, 0, 0 );
    ObjectSet( "MilestoneHUD3", OBJPROP_XDISTANCE, 6 );
@@ -495,6 +529,12 @@ void update(){
          ObjectSetText( "MilestoneHUD4", "No news, trading as normal", 10, "Arial Bold", LightGray ); 
       else ObjectSetText( "MilestoneHUD4", "Trading as normal", 10, "Arial Bold", LightGray ); 
    } else ObjectSetText( "MilestoneHUD4", "", 10, "Arial Bold", LightGray ); 
+*/   
+   Comment("DayBalance: " + DoubleToStr(daytradeObj.getAccountBalance(), 2) + ", MarginUsage: " + DoubleToStr(daytradeObj.getMarginUsage() * 100, 2) + "%, Target: " + DoubleToStr(daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth(), 2), "\n",
+           "Milestones: " + DoubleToStr(dailyTargets, 0) + " of " + DoubleToStr(totalDays, 0) + ", Growth: " + DoubleToStr(milestoneGrowth / daytradeObj.getAccountBalance() * 100, 4) + "% of " + DoubleToStr(daytradeObj.getMilestoneGrowth() * 100, 4) + "% ", "\n",
+           "Hed: " + hedgeStatus + ", Prof: " + DoubleToStr(totalProfit + totalLoss, 2) + ", Hist: " + DoubleToStr(totalHistoryProfit, 2) + ", Mg: " + DoubleToStr(AccountEquity() / daytradeObj.getAccountBalance() * 100, 1) + "%, Lots: " + DoubleToStr(buyLots + sellLots, 2), "\n",
+           "Spread: " + DoubleToStr(spread, 1) + ", Trend: " + DoubleToStr(trendStrength / pipPoints, 1) + ", ATR: " + DoubleToStr(eATR / pipPoints, 1) + " spike: " + DoubleToStr(spike, 0));
+
 }
 
 int start() { 
@@ -503,7 +543,7 @@ int start() {
    else {  
       if( Bars > MA1Period * 2 ){
          if( ( ( DayOfWeek() != 1 && !TradeMonday ) || TradeMonday ) && ( ( DayOfWeek() != 5 && !TradeFriday ) || TradeFriday ) ){
-            if (milestoneGrowth / AccountBalance() < MilestoneGrowth && TimeCurrent() - lastTradeTime > SleepSeconds && ( AccountEquity() / AccountBalance() > MinMarginLevel ) ){  
+            if (milestoneGrowth / daytradeObj.getAccountBalance() < daytradeObj.getMilestoneGrowth() && TimeCurrent() - lastTradeTime > SleepSeconds && ( AccountEquity() / daytradeObj.getAccountBalance() > MinMarginLevel ) ){  
                if( totalTrades >= MaxStartTrades ) backSystem();
                else if( ( ContinueTrading || ( !ContinueTrading && totalTrades > 0 ) ) && ( totalTrades < MaxStartTrades || MaxStartTrades == 0 ) ) openPosition();   
             }
