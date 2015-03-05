@@ -1,9 +1,8 @@
-#property copyright "trevone"
-#property link "http://codebase.mql4.com/9050" 
+#property copyright "bruno.engelbert"
 
 #include "Trade.mqh"
 
-string version = "Milestone 22.5";
+string version = "DayTrade 1.0";
 extern string GROWTH = "............................................................................................................."; 
 extern string MilestoneGrowth_Description = "..........Limit trading for the RefreshHours if the closed profit for this period is greater than the MilestoneGrowth ratio of the AccountBalance";
 //extern double MilestoneGrowth = 0.006; 
@@ -485,6 +484,7 @@ void manageStops(){
 }
  
 void update(){
+   double tick_value = (double) MarketInfo(Symbol(), MODE_TICKVALUE);
 /*
    if( ObjectFind("MilestoneHUD1") == -1 ) ObjectCreate( "MilestoneHUD1", OBJ_LABEL, 0, 0, 0 );   
 	if( EnableCalendar ) ObjectSet( "MilestoneHUD1", OBJPROP_YDISTANCE, 90 ); 
@@ -530,7 +530,7 @@ void update(){
       else ObjectSetText( "MilestoneHUD4", "Trading as normal", 10, "Arial Bold", LightGray ); 
    } else ObjectSetText( "MilestoneHUD4", "", 10, "Arial Bold", LightGray ); 
 */   
-   Comment("DayBalance: " + DoubleToStr(daytradeObj.getAccountBalance(), 2) + ", MarginUsage: " + DoubleToStr(daytradeObj.getMarginUsage() * 100, 2) + "%, Target: " + DoubleToStr(daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth(), 2), "\n",
+   Comment("DayBalance: " + DoubleToStr(daytradeObj.getAccountBalance(), 2) + ", MarginUsage: " + DoubleToStr(daytradeObj.getMarginUsage() * 100, 2) + "%, Target: " + DoubleToStr(daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth(), 2) + " (" + DoubleToStr((((daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth()) / lotSize) / tick_value) / 10, 1) + " pips)", "\n",
            "Milestones: " + DoubleToStr(dailyTargets, 0) + " of " + DoubleToStr(totalDays, 0) + ", Growth: " + DoubleToStr(milestoneGrowth / daytradeObj.getAccountBalance() * 100, 4) + "% of " + DoubleToStr(daytradeObj.getMilestoneGrowth() * 100, 4) + "% ", "\n",
            "Hed: " + hedgeStatus + ", Prof: " + DoubleToStr(totalProfit + totalLoss, 2) + ", Hist: " + DoubleToStr(totalHistoryProfit, 2) + ", Mg: " + DoubleToStr(AccountEquity() / daytradeObj.getAccountBalance() * 100, 1) + "%, Lots: " + DoubleToStr(buyLots + sellLots, 2), "\n",
            "Spread: " + DoubleToStr(spread, 1) + ", Trend: " + DoubleToStr(trendStrength / pipPoints, 1) + ", ATR: " + DoubleToStr(eATR / pipPoints, 1) + " spike: " + DoubleToStr(spike, 0));
