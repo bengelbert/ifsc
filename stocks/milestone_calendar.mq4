@@ -651,6 +651,8 @@ void OutputToChart()
 	
 	string milestoneImpact1 = "";
 	string milestoneImpact2 = "";
+
+	string milestoneDays1 = "";
 	
 	string milestoneHours1 = "";
 	string milestoneHours2 = "";
@@ -703,6 +705,7 @@ void OutputToChart()
 		if (Hours < 24) // less than a day: show hours and minutes
 		{
 			TimeStr = Hours + " hrs " + Mins + " mins ";
+			milestoneDays1 = 0;
 			milestoneHours1 = Hours;
 			milestoneMinutes1 = Mins;
 		}
@@ -711,6 +714,7 @@ void OutputToChart()
 			Days = MathRound(Hours / 24);
 			Hours = Hours % 24;
 			TimeStr = Days + " days " + Hours + " hrs " + Mins + " mins ";
+		   milestoneDays1 = Days;
 			milestoneHours1 = Hours;
 			milestoneMinutes1 = Mins;
 		}
@@ -868,6 +872,10 @@ void OutputToChart()
 		ObjectCreate("milestoneCurrency1", OBJ_LABEL, 0, 0, 0);
 		ObjectSet("milestoneCurrency1", OBJPROP_TIMEFRAMES, EMPTY );
 	}
+   if (ObjectFind("milestoneDays1") == -1){
+		ObjectCreate("milestoneDays1", OBJ_LABEL, 0, 0, 0);
+		ObjectSet("milestoneDays1", OBJPROP_TIMEFRAMES, EMPTY );
+   }
    if (ObjectFind("milestoneHours1") == -1){
 		ObjectCreate("milestoneHours1", OBJ_LABEL, 0, 0, 0);
 		ObjectSet("milestoneHours1", OBJPROP_TIMEFRAMES, EMPTY );
@@ -917,6 +925,7 @@ void OutputToChart()
 	if( milestoneMinutes1 != "" ){
       ObjectSetText("milestoneCurrency1", milestoneCurrency1 );  
       ObjectSetText("milestoneMinutes1", milestoneMinutes1 );  
+      ObjectSetText("milestoneDays1", milestoneDays1 );
       ObjectSetText("milestoneHours1", milestoneHours1 );
       ObjectSetText("milestoneText1", milestoneText1 );
       ObjectSetText("milestoneType1", milestoneType1 );

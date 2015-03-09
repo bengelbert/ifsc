@@ -22,6 +22,8 @@ public:
    double getAccountBalance(void);
    double getMilestoneGrowth(void);
    double getMarginUsage(void);
+   double getStopGrowth(void);
+   double getMinMarginLevel(void);
    
 };
 //+------------------------------------------------------------------+
@@ -54,6 +56,9 @@ void Trade::setAccountBalance(double balance)
    }
    else
    {
+      if (AccountBalance() < 700)
+         balance = 700;
+         
       mAccountBalance = balance;
    }
 }
@@ -111,3 +116,26 @@ double Trade::getMilestoneGrowth(void)
 {
    return (getMarginUsage() * 2);
 }
+
+/********************************************************************/
+
+double Trade::getStopGrowth(void)
+{
+   return (getMilestoneGrowth() * 2.5);
+}
+
+/********************************************************************/
+
+double Trade::getMinMarginLevel(void)
+{
+   double margin = 0.5;
+   
+   if (AccountBalance() < 700)
+   {
+      margin = AccountBalance() / 1400;
+   }  
+   
+   return (margin);
+}
+
+/********************************************************************/
