@@ -215,32 +215,65 @@ void lotSize(){
    if( backupLotSize < MinLots ) backupLotSize = MinLots;   
 } 
 
-void milestone(){
+void milestone()
+{
    multipleMargin = false;
    
-   if(AccountEquity() / daytradeObj.getAccountBalance() < daytradeObj.getMinMarginLevel() && totalProfit + totalLoss > 0 ) multipleMargin = true;
-   if( AccountMargin() > 0 ) marginLevel = AccountEquity() / AccountMargin() * 100  ; 
-   if( totalTrades == 0 ) marginLevel = 0;  
-   if( MathMod( TimeCurrent(), 3600 * RefreshHours ) <= 300 ){ 
-      if( turn == 0 ) totalDays = totalDays + 1;
+   if (AccountEquity() / daytradeObj.getAccountBalance() < daytradeObj.getMinMarginLevel() && 
+       totalProfit + totalLoss > 0 ) 
+   {
+      multipleMargin = true;
+   }
+   
+   if (AccountMargin() > 0)
+   {
+      marginLevel = AccountEquity() / AccountMargin() * 100; 
+   }
+   
+   if (totalTrades == 0) 
+   {
+      marginLevel = 0;
+   }
+   
+   if (MathMod(TimeCurrent(), 3600 * RefreshHours) <= 300)
+   { 
+      if (turn == 0) 
+      {
+         totalDays = totalDays + 1;
+
+         if (milestoneGrowth / daytradeObj.getAccountBalance() > daytradeObj.getMilestoneGrowth()) 
+         {
+            Print( "Milestone growth reached " ,DoubleToStr(  dailyTargets + 1, 0 ) + " / " + DoubleToStr(  totalDays, 0 ) );
+            dailyTargets = dailyTargets + 1;
+         }
+         milestoneGrowth = 0;  
+
+         daytradeObj.setAccountBalance(AccountBalance());
+      
+         if (totalProfit + totalLoss > 0)
+         { 
+            closeAll();
+         }
+      }
       turn = 1;
-      if (milestoneGrowth / daytradeObj.getAccountBalance() > daytradeObj.getMilestoneGrowth() ) {
-         Print( "Milestone growth reached " ,DoubleToStr(  dailyTargets + 1, 0 ) + " / " + DoubleToStr(  totalDays, 0 ) );
-         dailyTargets = dailyTargets + 1;
-         turn = 1;
-      } 
-      milestoneGrowth = 0;  
-      daytradeObj.setAccountBalance(AccountBalance());
-      if( totalProfit + totalLoss > 0 ) closeAll(); 
-   } else {
+   } 
+   else 
+   {
       turn = 0;
    }
-   if (SafeGrowth) 
-      if(milestoneGrowth / daytradeObj.getAccountBalance() > daytradeObj.getMilestoneGrowth()) 
+   
+   if (SafeGrowth)
+   {
+      if(milestoneGrowth / daytradeObj.getAccountBalance() > daytradeObj.getMilestoneGrowth())
+      {
          closeAll();
+      }
+   }
       
-   if(daytradeObj.getAccountBalance() > maxEquity) 
-      maxEquity = daytradeObj.getAccountBalance(); 
+   if(daytradeObj.getAccountBalance() > maxEquity)
+   {
+      maxEquity = daytradeObj.getAccountBalance();
+   }
 }
 
 void setPipPoint(){
@@ -433,7 +466,7 @@ void openPosition()
       {
          sendOpen(); 
       }
-      else if (calenadarEventTime > HolidayCalendarMinutes && 
+      else if (calenadarEventTime > (TrailCalendarMinutes + HolidayCalendarMinutes) && 
                ObjectDescription( "milestoneType1" ) == "since" &&
                ObjectDescription("milestoneImpact1") == "Holiday")
       {
@@ -473,7 +506,7 @@ void backSystem()
       {
          sendBack(); 
       }
-      else if (calenadarEventTime > HolidayCalendarMinutes && 
+      else if (calenadarEventTime > (TrailCalendarMinutes + HolidayCalendarMinutes) && 
                ObjectDescription( "milestoneType1" ) == "since" &&
                ObjectDescription("milestoneImpact1") == "Holiday")
       {
@@ -554,7 +587,7 @@ void manageStops()
        totalHistoryProfit > daytradeObj.getStopGrowth() * daytradeObj.getAccountBalance() && 
        (totalProfit + totalLoss) < 0 && 
        MathAbs( totalProfit + totalLoss ) > RelativeStop * totalHistoryProfit &&
-       calenadarEventTime <= LeadCalendarMinutes && ObjectDescription( "milestoneType1" ) == "until") 
+       calenadarEventTime <= LeadCalendarMinutes) 
    {
       closeAll(); 
    }
@@ -620,11 +653,11 @@ void update(){
       else if (calenadarEventTime > TrailCalendarMinutes && ObjectDescription("milestoneType1") == "since")
       {
          //ObjectSetText( "MilestoneHUD4", "Past news, trading as normal", 10, "Arial Bold", LightGray );
-         if (ObjectDescription("milestoneImpact1") == "Holiday" && calenadarEventTime <= HolidayCalendarMinutes)
+         if (ObjectDescription("milestoneImpact1") == "Holiday" && calenadarEventTime <= (TrailCalendarMinutes + HolidayCalendarMinutes))
          {
             strNews = "Is holiday, signal waiting/exit";
          }
-         else if (ObjectDescription("milestoneImpact1") == "Holiday" && calenadarEventTime > HolidayCalendarMinutes)
+         else if (ObjectDescription("milestoneImpact1") == "Holiday" && calenadarEventTime > (TrailCalendarMinutes + HolidayCalendarMinutes))
          {
             strNews = "Holiday past, trading as normal";
          }
