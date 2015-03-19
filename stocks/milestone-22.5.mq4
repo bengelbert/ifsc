@@ -5,9 +5,12 @@
 string version = "DayTrade 1.0";
 extern string GROWTH = "............................................................................................................."; 
 extern string MilestoneGrowth_Description = "..........Limit trading for the RefreshHours if the closed profit for this period is greater than the MilestoneGrowth ratio of the AccountBalance";
-//extern double MilestoneGrowth = 0.006; 
+extern double MilestoneGrowth = 0.002; 
+extern string MaxSpread_Description = "..........Only open new trades if the spread is below this value in pips if SafeSpread is enabled";
+extern double MaxSpread = 11; 
 extern string SafeProfit_Description = "..........If SafeExits is enabled then take profit at this ratio of the AccountSize if the signal reverses";
 extern double SafeProfit =  0.003;
+extern double MarginUsage = 0.006;
 extern string StopGrowth_Description = "..........Only stop trades if the history is greater than this ratio of the AccountBalance";
 //extern double StopGrowth =  0.005;
 extern string DEFAULT_DESCRIPTION = "..........The default settings are the lowest risk"; 
@@ -105,9 +108,8 @@ extern string MaxTrend_Description = "..........Only open trades if the Trend is
 extern double MaxTrend = 6;     
 extern string MARGIN = ".............................................................................................................";  
 extern string MinMarginLevel_Description = "..........Only open new trades if the AccountEquity divided by AccountBalance is above this level";
-//extern double MinMarginLevel = 0.5;
+extern double MinMarginLevel = 0.5;
 extern string MarginUsage_Description = "..........Use this amount of the AccountBalance for the Front System lotsize calculation";
-//extern double MarginUsage = 0.003;
 extern string BackupMargin_Description = "..........Use this amount of the AccountBalance for the Back System lotsize calculation";
 //extern double BackupMargin = 0.001; 
 extern string MinLots_Description = "..........All trades will be at least this lotsize";
@@ -115,8 +117,6 @@ extern double MinLots = 0.01;
 extern string TRADE = ".............................................................................................................";  
 extern string TradeSpace_Description = "..........Only open new trades if there are no trades near this ratio of the ATR";
 extern double TradeSpace = 10;
-extern string MaxSpread_Description = "..........Only open new trades if the spread is below this value in pips if SafeSpread is enabled";
-extern double MaxSpread = 5; 
 extern string CandleSpike_Description = "..........Number of pips to measure a candle spike";
 extern double CandleSpike = 5; 
 extern string SpikeCount_Description = "..........Number of bars to look back on for candle spike";
@@ -187,7 +187,7 @@ string signalComment = "";
 int init()
 {   
    daytradeObj.setAccountBalance(AccountBalance());
-
+   
    prepare();   
    
    return(0);
@@ -279,6 +279,8 @@ void milestone()
 void setPipPoint(){
    digits = (int) MarketInfo( Symbol(), MODE_DIGITS );
    if( digits == 3 ) pipPoints = 0.010;
+   else if( digits == 2 ) pipPoints = 0.01000;
+   else if( digits == 4 ) pipPoints = 0.00010;
    else if( digits == 5 ) pipPoints = 0.00010;
 } 
 
@@ -418,7 +420,12 @@ void prepareCalendar(){
    //else calenadarEventTime = 0; 
 }   
 
-void prepare(){ 
+void prepare()
+{ 
+   daytradeObj.setMarginUsage(MarginUsage);
+   daytradeObj.setMinMarginLevel(MinMarginLevel);
+   daytradeObj.setMilestoneGrowth(MilestoneGrowth);
+
    prepareIndicators(); 
    prepareCalendar(); 
    prepareTrend();
@@ -683,8 +690,8 @@ void update(){
       strNews = "";
    }
    
-   Comment("Balance: " + DoubleToStr(daytradeObj.getAccountBalance(), 2) + ", MgnUse: " + DoubleToStr(daytradeObj.getMarginUsage() * 100, 2) + "%, Tgt: " + DoubleToStr(daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth(), 2) + " (" + DoubleToStr((((daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth()) / lotSize) / tick_value) / 10, 1) + " pips) Stop: " + DoubleToStr(totalHistoryProfit * RelativeStop, 2), "\n",
-           "Milestones: " + DoubleToStr(dailyTargets, 0) + " of " + DoubleToStr(totalDays, 0) + ", Growth: " + DoubleToStr(milestoneGrowth / daytradeObj.getAccountBalance() * 100, 4) + "% of " + DoubleToStr(daytradeObj.getMilestoneGrowth() * 100, 4) + "% ", "\n",
+   Comment("Balance: " + DoubleToStr(daytradeObj.getAccountBalance(), 2) + ", MgnUse: " + DoubleToStr(daytradeObj.getMarginUsage() * 100, 2) + "%, Tgt: " + DoubleToStr(daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth(), 2) + " (" + DoubleToStr((((daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth()) / lotSize) / tick_value), 0) + " pips) Stop: " + DoubleToStr(totalHistoryProfit * RelativeStop, 2), "\n",
+           "Milestones: " + DoubleToStr(dailyTargets, 0) + " of " + DoubleToStr(totalDays, 0) + ", Growth: " + DoubleToStr(milestoneGrowth / daytradeObj.getAccountBalance() * 100, 4) + "% of " + DoubleToStr(daytradeObj.getMilestoneGrowth() * 100, 4) + "%" + ", LotPrev: " + DoubleToStr(lotSize, 2), "\n",
            "Hed: " + hedgeStatus + ", Prof: " + DoubleToStr(totalProfit + totalLoss, 2) + ", Hist: " + DoubleToStr(totalHistoryProfit, 2) + ", Mg: " + DoubleToStr(AccountEquity() / daytradeObj.getAccountBalance() * 100, 1) + "%/" + DoubleToStr(daytradeObj.getMinMarginLevel() * 100, 1) + "%, Lots: " + DoubleToStr(buyLots + sellLots, 2), "\n",
            "Spread: " + DoubleToStr(spread, 1) + ", Trend: " + DoubleToStr(trendStrength / pipPoints, 1) + ", ATR: " + DoubleToStr(eATR / pipPoints, 1) + " spike: " + DoubleToStr(spike, 0), ", StopGrowth: ", DoubleToStr(daytradeObj.getStopGrowth() * daytradeObj.getAccountBalance(), 2), "\n",
            "News: " + strNews, ", Time: ", DoubleToStr(calenadarEventTime, 0));
