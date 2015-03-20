@@ -184,9 +184,60 @@ string signalComment = "";
 
 /********************************************************************/
 
+int daytrade_file_read()
+{
+   int filehandle;
+   
+   ResetLastError();
+   filehandle = FileOpen("daytrade"+Symbol()+".csv", FILE_READ | FILE_CSV);
+   
+   if(filehandle != INVALID_HANDLE)
+   {
+      daytradeObj.setAccountBalance(StringToDouble(FileReadString(filehandle)));
+      dailyTargets = (int) StringToInteger(FileReadString(filehandle));
+      totalDays = (int) StringToInteger(FileReadString(filehandle));
+      
+      FileClose(filehandle);
+      Print("FileOpen OK");
+   }
+   else 
+   {
+      Print("Operation FileOpen failed, error ",GetLastError());
+      daytrade_file_write();
+      daytrade_file_read();
+   }
+      
+   return (0);
+}
+
+/********************************************************************/
+
+int daytrade_file_write()
+{
+   int filehandle;
+   
+   ResetLastError();
+   filehandle = FileOpen("daytrade"+Symbol()+".csv", FILE_WRITE | FILE_CSV, ';');
+   
+   if(filehandle != INVALID_HANDLE)
+   {
+      FileWrite(filehandle, DoubleToStr(AccountBalance(), 2) + ";" + IntegerToString(dailyTargets) + ";" + IntegerToString(totalDays));
+      FileClose(filehandle);
+      Print("FileOpen OK");
+   }
+   else 
+      Print("Operation FileOpen failed, error ",GetLastError());
+      
+   return (0);
+}
+
+/********************************************************************/
+
 int init()
 {   
-   daytradeObj.setAccountBalance(AccountBalance());
+   daytrade_file_read();
+   //daytradeObj.setAccountBalance(AccountBalance());
+   //daytrade_file_write();
    
    prepare();   
    
@@ -249,6 +300,8 @@ void milestone()
          milestoneGrowth = 0;  
 
          daytradeObj.setAccountBalance(AccountBalance());
+      
+         daytrade_file_write();
       
          if (totalProfit + totalLoss > 0)
          { 
@@ -591,9 +644,10 @@ void manageStops()
 { 
    if (EnableStop && 
        TimeCurrent() - lastTradeTime > BasketSeconds && 
-       totalHistoryProfit > daytradeObj.getStopGrowth() * daytradeObj.getAccountBalance() && 
+       totalHistoryProfit > (daytradeObj.getStopGrowth() * daytradeObj.getAccountBalance()) && 
        (totalProfit + totalLoss) < 0 && 
-       MathAbs( totalProfit + totalLoss ) > RelativeStop * totalHistoryProfit &&
+       MathAbs(totalProfit + totalLoss) > (RelativeStop * totalHistoryProfit) &&
+       MathAbs(totalProfit + totalLoss) < (daytradeObj.getStopGrowth() * daytradeObj.getAccountBalance()) &&
        calenadarEventTime <= LeadCalendarMinutes) 
    {
       closeAll(); 
@@ -694,7 +748,7 @@ void update(){
            "Milestones: " + DoubleToStr(dailyTargets, 0) + " of " + DoubleToStr(totalDays, 0) + ", Growth: " + DoubleToStr(milestoneGrowth / daytradeObj.getAccountBalance() * 100, 4) + "% of " + DoubleToStr(daytradeObj.getMilestoneGrowth() * 100, 4) + "%" + ", LotPrev: " + DoubleToStr(lotSize, 2), "\n",
            "Hed: " + hedgeStatus + ", Prof: " + DoubleToStr(totalProfit + totalLoss, 2) + ", Hist: " + DoubleToStr(totalHistoryProfit, 2) + ", Mg: " + DoubleToStr(AccountEquity() / daytradeObj.getAccountBalance() * 100, 1) + "%/" + DoubleToStr(daytradeObj.getMinMarginLevel() * 100, 1) + "%, Lots: " + DoubleToStr(buyLots + sellLots, 2), "\n",
            "Spread: " + DoubleToStr(spread, 1) + ", Trend: " + DoubleToStr(trendStrength / pipPoints, 1) + ", ATR: " + DoubleToStr(eATR / pipPoints, 1) + " spike: " + DoubleToStr(spike, 0), ", StopGrowth: ", DoubleToStr(daytradeObj.getStopGrowth() * daytradeObj.getAccountBalance(), 2), "\n",
-           "News: " + strNews, ", Time: ", DoubleToStr(calenadarEventTime, 0));
+           "News: " + strNews, ", Time: ", DoubleToStr(calenadarEventTime, 0) + " Tick: " + DoubleToStr(tick_value, Digits));
 
 }
 
