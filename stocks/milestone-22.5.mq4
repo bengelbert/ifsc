@@ -9,8 +9,8 @@ extern double MilestoneGrowth = 0.002;
 extern string MaxSpread_Description = "..........Only open new trades if the spread is below this value in pips if SafeSpread is enabled";
 extern double MaxSpread = 11; 
 extern string SafeProfit_Description = "..........If SafeExits is enabled then take profit at this ratio of the AccountSize if the signal reverses";
+extern double MarginUsage = 0.0003;
 extern double SafeProfit =  0.003;
-extern double MarginUsage = 0.006;
 extern string StopGrowth_Description = "..........Only stop trades if the history is greater than this ratio of the AccountBalance";
 //extern double StopGrowth =  0.005;
 extern string DEFAULT_DESCRIPTION = "..........The default settings are the lowest risk"; 
@@ -388,12 +388,13 @@ void prepareHistory(){
    }
 }
 
+bool bullishi = true;
+bool bearishi = true;   
+
 void prepareTrend(){ 
    bullish = false;
    bearish = false; 
    spike = false;
-   bool bullishi = true;
-   bool bearishi = true;   
    double MA1Curi, MA2Curi;   
    for( int i = 0; i < TrendBars; i++ ) {
       if( i < SpikeCount && MathAbs( Close[i] - Open[i] ) > CandleSpike * pipPoints ) spike = true; 
@@ -647,7 +648,7 @@ void manageStops()
        totalHistoryProfit > (daytradeObj.getStopGrowth() * daytradeObj.getAccountBalance()) && 
        (totalProfit + totalLoss) < 0 && 
        MathAbs(totalProfit + totalLoss) > (RelativeStop * totalHistoryProfit) &&
-       MathAbs(totalProfit + totalLoss) < (daytradeObj.getStopGrowth() * daytradeObj.getAccountBalance()) &&
+       MathAbs(totalProfit + totalLoss) < (RelativeStop * 2 * totalHistoryProfit) &&
        calenadarEventTime <= LeadCalendarMinutes) 
    {
       closeAll(); 
@@ -745,7 +746,7 @@ void update(){
    }
    
    Comment("Balance: " + DoubleToStr(daytradeObj.getAccountBalance(), 2) + " (" + DoubleToStr(AccountBalance() - daytradeObj.getAccountBalance(), 2) + "/" + DoubleToStr((AccountBalance() - daytradeObj.getAccountBalance()) / daytradeObj.getAccountBalance() * 100, 2) + "%), MgnUse: " + DoubleToStr(daytradeObj.getMarginUsage() * 100, 2) + "%, Tgt: " + DoubleToStr(daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth(), 2) + " (" + DoubleToStr((((daytradeObj.getAccountBalance() * daytradeObj.getMilestoneGrowth()) / lotSize) / tick_value), 0) + " pips) Stop: " + DoubleToStr(totalHistoryProfit * RelativeStop, 2), "\n",
-           "Milestones: " + DoubleToStr(dailyTargets, 0) + " of " + DoubleToStr(totalDays, 0) + ", Growth: " + DoubleToStr(milestoneGrowth / daytradeObj.getAccountBalance() * 100, 4) + "% of " + DoubleToStr(daytradeObj.getMilestoneGrowth() * 100, 4) + "%" + ", LotPrev: " + DoubleToStr(lotSize, 2), "\n",
+           "Milestones: " + DoubleToStr(dailyTargets, 0) + " of " + DoubleToStr(totalDays, 0) + ", Growth: " + DoubleToStr(milestoneGrowth / daytradeObj.getAccountBalance() * 100, 4) + "% of " + DoubleToStr(daytradeObj.getMilestoneGrowth() * 100, 4) + "%" + ", LotPrev: " + DoubleToStr(lotSize, 2) + ", Buy(" + DoubleToStr(bearishi, 0) + "), Sell(" + DoubleToStr(bullishi, 0) + ")", "\n",
            "Hed: " + hedgeStatus + ", Prof: " + DoubleToStr(totalProfit + totalLoss, 2) + ", Hist: " + DoubleToStr(totalHistoryProfit, 2) + ", Mg: " + DoubleToStr(AccountEquity() / daytradeObj.getAccountBalance() * 100, 1) + "%/" + DoubleToStr(daytradeObj.getMinMarginLevel() * 100, 1) + "%, Lots: " + DoubleToStr(buyLots + sellLots, 2), "\n",
            "Spread: " + DoubleToStr(spread, 1) + ", Trend: " + DoubleToStr(trendStrength / pipPoints, 1) + ", ATR: " + DoubleToStr(eATR / pipPoints, 1) + " spike: " + DoubleToStr(spike, 0), ", StopGrowth: ", DoubleToStr(daytradeObj.getStopGrowth() * daytradeObj.getAccountBalance(), 2), "\n",
            "News: " + strNews, ", Time: ", DoubleToStr(calenadarEventTime, 0) + " Tick: " + DoubleToStr(tick_value, Digits));
