@@ -286,7 +286,7 @@ void milestone()
       marginLevel = 0;
    }
    
-   if (MathMod(TimeCurrent(), 3600 * RefreshHours) <= 300)
+   if (MathMod(TimeCurrent(), 3600 * RefreshHours) <= 600)
    { 
       if (turn == 0) 
       {
@@ -395,6 +395,10 @@ void prepareTrend(){
    bullish = false;
    bearish = false; 
    spike = false;
+   
+   bullishi = true;
+   bearishi = true;
+   
    double MA1Curi, MA2Curi;   
    for( int i = 0; i < TrendBars; i++ ) {
       if( i < SpikeCount && MathAbs( Close[i] - Open[i] ) > CandleSpike * pipPoints ) spike = true; 
