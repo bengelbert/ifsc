@@ -1,0 +1,33 @@
+{
+  "companies": 
+  [
+    { "name": "AMBEV", "type": "ON", "market": "BVMF", "code": "ABEV3" },
+    { "name": "BRASIL", "type": "ON", "market": "BVMF", "code": "BBAS3" },
+    { "name": "BRADESCO", "type": "ON", "market": "BVMF", "code": "BBDC3" },
+    { "name": "BRADESCO", "type": "PN", "market": "BVMF", "code": "BBDC4" },
+    { "name": "BB SEGURIDADE", "type": "ON", "market": "BVMF", "code": "BBSE3" },
+    { "name": "MINERVA", "type": "ON", "market": "BVMF", "code": "BEEF3" },
+    { "name": "BRADESPAR", "type": "ON", "market": "BVMF", "code": "BRAP3" },
+    { "name": "BRADESPAR", "type": "PN", "market": "BVMF", "code": "BRAP4" },
+    { "name": "BRF", "type": "ON", "market": "BVMF", "code": "BRFS3" },
+    { "name": "BRASKEM", "type": "ON", "market": "BVMF", "code": "BRKM3" },
+    { "name": "BRASKEM", "type": "PNA", "market": "BVMF", "code": "BRKM5" },
+    { "name": "BRASKEM", "type": "PNB", "market": "BVMF", "code": "BRKM6" },
+    { "name": "BR MALLS", "type": "ON", "market": "BVMF", "code": "BRML3" },
+    { "name": "BR PROPERTIES", "type": "ON", "market": "BVMF", "code": "BRPR3" },
+    { "name": "BANRISUL", "type": "ON", "market": "BVMF", "code": "BRSR3" },
+    { "name": "BANRISUL", "type": "PNA", "market": "BVMF", "code": "BRSR5" },
+    { "name": "BANRISUL", "type": "PNB", "market": "BVMF", "code": "BRSR6" },
+    { "name": "BMF BOVESPA", "type": "ON", "market": "BVMF", "code": "BVMF3" },
+    { "name": "CCR", "type": "ON", "market": "BVMF", "code": "CCRO3" },
+    { "name": "CEMIG", "type": "ON", "market": "BVMF", "code": "CMIG3" },
+    { "name": "CEMIG", "type": "PN", "market": "BVMF", "code": "CMIG4" },
+    { "name": "ETERNIT", "type": "ON", "market": "BVMF", "code": "ETER3" },
+    { "name": "SARAIVA", "type": "ON", "market": "BVMF", "code": "SLED3" },
+    { "name": "SARAIVA", "type": "PN", "market": "BVMF", "code": "SLED4" },
+    { "name": "AES ELPA", "type": "ON", "market": "BVMF", "code": "AELP3", "setor": "Utilidade Pública", "subsetor": "Energia Elétrica", "segmento": "Energia Elétrica"},
+    { "name": "AES TIETE E", "type": "ON", "market": "BVMF", "code": "TIET3", "setor": "Utilidade Pública", "subsetor": "Energia Elétrica", "segmento": "Energia Elétrica"},
+    { "name": "AES TIETE E", "type": "PN", "market": "BVMF", "code": "TIET4", "setor": "Utilidade Pública", "subsetor": "Energia Elétrica", "segmento": "Energia Elétrica"},
+    { "name": "AES TIETE E", "type": "UNIT", "market": "BVMF", "code": "TIET11", "setor": "Utilidade Pública", "subsetor": "Energia Elétrica", "segmento": "Energia Elétrica", "ON": 1, "PN": 4}
+  ]
+}

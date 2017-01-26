@@ -1,0 +1,42 @@
+{
+  "name": "fundamentus",
+  "private": true,
+  "version": "0.0.0",
+  "description": "A chat example to showcase how to use `socket.io` with a static `express` server with `async` for control flow.",
+  "main": "server.js",
+  "repository": "",
+  "author": "Bruno Engelbert",
+  "dependencies": {
+    "async": "~0.2.8",
+    "bovespa": "^0.1.0",
+    "chai": "^3.5.0",
+    "cheerio": "^0.22.0",
+    "debug": "^2.6.0",
+    "eslint": "^3.13.0",
+    "express": "~3.2.4",
+    "google-stocks": "^1.0.1",
+    "gulp-mocha": "^3.0.1",
+    "mocha": "^3.2.0",
+    "mongoose": "^4.7.7",
+    "nconf": "^0.8.4",
+    "node-wget": "^0.4.2",
+    "request-progress": "^3.0.0",
+    "serve-static": "^1.11.1",
+    "socket.io": "~0.9.14",
+    "stats-lite": "^2.0.3",
+    "unzip": "^0.1.11",
+    "webdriverio": "^4.6.1",
+    "xls-to-json": "^0.4.0",
+    "xml2json": "^0.11.0"
+  },
+  "devDependencies": {
+    "eslint": "^3.13.0",
+    "eslint-config-airbnb-base": "^11.0.0",
+    "eslint-plugin-import": "^2.2.0",
+    "gulp": "^3.9.1",
+    "wdio-mocha-framework": "^0.5.8",
+    "wdio-phantomjs-service": "^0.2.2",
+    "wdio-selenium-standalone-service": "0.0.7",
+    "wdio-spec-reporter": "0.0.5"
+  }
+}
