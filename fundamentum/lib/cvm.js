@@ -1,5 +1,6 @@
 const async = require('async');
 const cheerio = require('cheerio');
+const debug = require('debug')('cvm');
 const Events = require('events');
 const Exception = require('./exception');
 const fs = require('fs');
@@ -66,7 +67,7 @@ class Cvm {
     try {
       const path = options.Path,
         outPath = `${path.split('.zip')[0]}.txt`;
-      console.log(outPath);
+      //console.log(outPath);
       fs.createReadStream(path)
       .pipe(unzip.Parse())
       .on('entry', (entry) => {
@@ -172,7 +173,7 @@ class Cvm {
       const ccvm = options.Ccvm;
       const cnpj = options.Cnpj;
       const url = `http://siteempresas.bovespa.com.br/consbov/ExibeTodosDocumentosCVM.asp?CNPJ=${cnpj}&CCVM=${ccvm}&TipoDoc=C&QtLinks=20`;
-      console.log(`requestDFPList() => ${JSON.stringify(options)}`);
+      //console.log(`requestDFPList() => ${JSON.stringify(options)}`);
       httpPost(url, (error, body) => {
         try {
           if (!error) {
@@ -231,7 +232,7 @@ class Cvm {
         urls.push(`https://www.rad.cvm.gov.br/enetconsulta/frmDownloadDocumento.aspx?CodigoInstituicao=1&NumeroSequencialDocumento=${code}`);
       }
       // ---
-      console.log(`requestDownloadDFPList() => ${JSON.stringify(options)}`);
+      //console.log(`requestDownloadDFPList() => ${JSON.stringify(options)}`);
       async.mapSeries(urls, (url, cb) => {
         try {
           const code = url.slice(url.indexOf('NumeroSequencialDocumento')).replace(/[^0-9]/g,'').trim();
@@ -245,17 +246,17 @@ class Cvm {
                 });
                 // ---
                 if (!dfp) {
-                  console.log(`requestDownloadDFPList() => DfpCode '${code}' not found`);
+                  //console.log(`requestDownloadDFPList() => DfpCode '${code}' not found`);
                   this.requestDownloadDfp({ Url: url, Ccvm: ccvm, DfpCode: code}, cb);
                 } else {
-                  console.log(`requestDownloadDFPList() => DfpCode '${code}' found`);
+                  //console.log(`requestDownloadDFPList() => DfpCode '${code}' found`);
                   if (!this.companies[`${ccvm}`]) this.companies[`${ccvm}`] = {};
                   if (!this.companies[`${ccvm}`].dfps) this.companies[`${ccvm}`].dfps = [];
                   this.companies[`${ccvm}`].dfps.push(dfp);
                   cb(null);
                 }
               } else if (e.code === 'ENOENT') {
-                console.log(`requestDownloadDFPList() => jsonPath '${jsonPath}' not found`);
+                //console.log(`requestDownloadDFPList() => jsonPath '${jsonPath}' not found`);
                 this.requestDownloadDfp({ Url: url, Ccvm: ccvm, DfpCode: code}, cb);
               } else cb(e);
             } catch (e) {
@@ -294,7 +295,7 @@ class Cvm {
       // ---
       if (stat) fs.unlinkSync(dlPath);
       // ---
-      console.log(`requestDownloadDfp() Download => ccvm: ${ccvm} doc: ${dfpCode}`);
+      //console.log(`requestDownloadDfp() Download => ccvm: ${ccvm} doc: ${dfpCode}`);
       progress(request(url))
       .on('progress', (progressState) => {
         const progressPercent = progressState.size.transferred / progressState.size.total * 100;
@@ -320,7 +321,7 @@ class Cvm {
     try {
       const ccvm = options.Ccvm;
       const url = `http://bvmf.bmfbovespa.com.br/pt-br/mercados/acoes/empresas/ExecutaAcaoConsultaInfoEmp.asp?CodCVM=${ccvm}&ViewDoc=0`;
-      console.log(`requestNegociationCode() => ${url}`);
+      //console.log(`requestNegociationCode() => ${url}`);
       request(url, (err, res, body) => {
         try {
           if (!err) {
@@ -365,7 +366,7 @@ class Cvm {
       const xmlCode = options.XmlCode;
       const path = `dl/${ccvm}-${xmlCode}`;
       // ---
-      this.log.debug('extractAllFiles', `${JSON.stringify(options)}`);
+      //this.log.debug('extractAllFiles', `${JSON.stringify(options)}`);
       // ---
       fs.createReadStream(`${path}.zip`)
       .pipe(unzip.Parse())
@@ -414,7 +415,7 @@ class Cvm {
     const xmlCode = options.XmlCode;
     const path = `dl/${ccvm}-${xmlCode}`;
     // ---
-    this.log.debug('parseAllDocuments', `${JSON.stringify(options)}`);
+    //this.log.debug('parseAllDocuments', `${JSON.stringify(options)}`);
     // ---
     this.dfps.contents = {};
     async.series({
@@ -445,7 +446,7 @@ class Cvm {
     try {
       const fileName = options.FileName;
       // ---
-      this.log.debug('parseComposicaoCapitalSocialXml', `${JSON.stringify(options)}`);
+//      this.log.debug('parseComposicaoCapitalSocialXml', `${JSON.stringify(options)}`);
       // ---
       fs.readFile(fileName, 'utf8', (err, data) => {
         try {
@@ -476,7 +477,7 @@ class Cvm {
     try {
       const fileName = options.FileName;
       // ---
-      this.log.debug('parseDocumentoXml', `${JSON.stringify(options)}`);
+//      this.log.debug('parseDocumentoXml', `${JSON.stringify(options)}`);
       // ---
       fs.readFile(fileName, 'utf8', (err, data) => {
         try {
@@ -507,7 +508,7 @@ class Cvm {
     try {
       const fileName = options.FileName;
       // ---
-      this.log.debug('parsePagamentoProventoDinheiroXml', `${JSON.stringify(options)}`);
+//      this.log.debug('parsePagamentoProventoDinheiroXml', `${JSON.stringify(options)}`);
       // ---
       fs.readFile(fileName, 'utf8', (err, data) => {
         try {
@@ -549,15 +550,17 @@ class Cvm {
     try {
       const ccvm = options.Ccvm;
       const cnpj = options.Cnpj;
-      console.log(`updateCompany() => ${JSON.stringify(options)}`);
+      debug('updateCompany()');
+      debug(options);
       async.series([(cb) => {
         this.requestNegociationCode({ Ccvm: ccvm }, err => cb(err));
       }, (cb) => {
         try {
           if (this.companies[`${ccvm}`]) {
+            debug(this.companies[`${ccvm}`]);
             const codes = this.companies[`${ccvm}`].ConsultaInfoEmp['Códigos de Negociação'];
             if (codes.length > 0) {
-              this.log.debug('updateCompany', `codes: ${codes}`);
+//              this.log.debug('updateCompany', `codes: ${codes}`);
               this.requestDFPList({ Ccvm: ccvm, Cnpj: cnpj }, err => cb(err));
             }
           } else cb(null);
@@ -575,16 +578,16 @@ class Cvm {
    * 
    * 
    */
-  updateAllCompanies(callback = () => {}) {
+  updateAllCompanies(options, callback = () => {}) {
     try {
+      const ccvm = options.Ccvm;
       fs.readFile('database/cvmcolist.json', (err, data) => {
         if (!err) {
-          const coList = JSON.parse(data);/*.sort((a, b) => {
-            return (b.NOME - a.NOME);
-          });*/
+          let coList = JSON.parse(data);
+          coList = (ccvm) ? coList.filter(x => x['CÓDIGO CVM'] === `${ccvm}`) : coList;
           async.mapSeries(coList, (co, cb) => {
             if (co.CNPJ !== '-') {
-              console.log(`updateAllCompanies() => ${co.NOME}`);
+              //console.log(`updateAllCompanies() => ${co.NOME}`);
               this.updateCompany({ Ccvm: co['CÓDIGO CVM'], Cnpj: co.CNPJ }, (err) => {
                 cb(err);
               });

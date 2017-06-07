@@ -24,7 +24,7 @@ describe('#parseCompaniesRegistrationData()', () => {
       should.not.exist(e);
       should.exist(res);
       res.should.to.be.instanceof(Array);
-      console.log(res[0]);
+      console.log(res.find(f => f.SITUACAO_REGISTRO === 'ATIVO'));
       done();
     });
   });

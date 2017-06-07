@@ -22,7 +22,7 @@ class Exception extends Events {
    *
    *
    */
-  create(functionName, error, callback = () => {}) {
+  create(functionName, error, callback) {
     this.emit('error', functionName || '', error, callback);
   }
 }
