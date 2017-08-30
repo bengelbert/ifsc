@@ -241,9 +241,7 @@ class Cvm {
             try {
               if (!e) {
                 const dfps = JSON.parse(data).dfps;
-                const dfp = dfps.find((dfp) => {
-                  return (dfp.XmlCode === code);
-                });
+                const dfp = (dfps) ? dfps.find(f => f.XmlCode === code) : undefined
                 // ---
                 if (!dfp) {
                   //console.log(`requestDownloadDFPList() => DfpCode '${code}' not found`);
@@ -337,14 +335,16 @@ class Cvm {
             if (lineCodes) {
               data['Códigos de Negociação'] = [];
               lineCodes.trim().split(';').forEach((code) => {
-                if (code.trim() !== '') {
-                  data['Códigos de Negociação'].push(code.trim());
+                const codeClean = code.trim()
+                debug('Codigo:', codeClean)
+                if (codeClean !== '' && codeClean.indexOf('Nenhum') === -1) {
+                  data['Códigos de Negociação'].push(codeClean);
                 }
               });
               if (!this.companies[`${ccvm}`]) this.companies[`${ccvm}`] = {};
               this.companies[`${ccvm}`].ConsultaInfoEmp = data;
             }
-          callback(null);
+            callback(null);
           } else {
             callback(err);
           }
@@ -562,6 +562,8 @@ class Cvm {
             if (codes.length > 0) {
 //              this.log.debug('updateCompany', `codes: ${codes}`);
               this.requestDFPList({ Ccvm: ccvm, Cnpj: cnpj }, err => cb(err));
+            } else {
+              cb()
             }
           } else cb(null);
         } catch (e) {
