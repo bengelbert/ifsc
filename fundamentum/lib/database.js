@@ -498,6 +498,7 @@ class Database {
     try {
       debug(`getQuoteFromList() => options: ${options}, len: ${options.QuoteList.length}`);
       const quoteList = options.QuoteList;
+      debug(`${JSON.stringify(quoteList)}`);
       let quoteListAux = [];
       const quoteListfull = [];
       quoteList.forEach((item, index) => {
