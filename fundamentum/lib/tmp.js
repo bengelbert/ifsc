@@ -2,13 +2,13 @@
 require('xls').parse('database/cap.xls', function(err, data) {
   console.log(data);
 });
-*/
+
 const node_xj = require("xls-to-json");
 
 node_xj({
-  input: "database/cap.xls",  // input xls 
-  output: "database/cap.json", // output json 
-  sheet: "Plan1"  // specific sheetname 
+  input: "database/cap.xls",  // input xls
+  output: "database/cap.json", // output json
+  sheet: "Plan1"  // specific sheetname
 }, (err, result) => {
   if(err) {
     console.error(err);
@@ -17,47 +17,45 @@ node_xj({
   }
 });
 /*
-var timeseries = require("timeseries-analysis");
 const stats = require("stats-lite");
 var googleFinance = require('google-finance');
-var moment = require('moment');
 
+const timeseries = require('timeseries-analysis')
+const moment = require('moment')
+const googleFinance = require('google-finance')
 
+const now = new Date().toJSON()
+const past = moment(now).add(-30, 'days').toDate()
 
 googleFinance.companyNews({
-  symbol: 'BVMF:ETER3'
+  symbol: 'NASDAQ:AAPL'
 }, function (err, news) {
-  //if (!err) 
-   // console.log(news);
-});
- 
-var now = new Date().toJSON();
-var past = moment(now).add(-30, 'days').toDate();
-
-
-console.log(now);
-console.log(past);
+  console.log(news)
+})
 
 googleFinance.historical({
-  symbol: 'BVMF:ETER3', 
-  from: past,
-  to: now
+  symbol: 'NASDAQ:AAPL',
+  from: '2014-01-01',
+  to: '2014-12-31'
 }, function (err, quotes) {
-  if (!err) {
-    const volume = [];
-    var t     = new timeseries.main(timeseries.adapter.fromDB(quotes, {
-      date:   'date',     // Name of the property containing the Date (must be compatible with new Date(date) )
-      value:  'volume'     // Name of the property containign the value. here we'll use the "close" price.
-    }));
-    console.log(t.mean());
-  }
-});
+  console.log(quotes)
+})
 
+/*
 //console.log(jsonDate);
 
 var quoth = require("quoth");
- 
-// Listed companies 
+
+// Listed companies
 quoth.spot('BVMF:TUPY3', (err, result) => {
   console.log(result);
- });*/
+ }); */
+const { lookup, history } = require('yahoo-stocks')
+
+const main = async () => {
+  const response = await history('PETR3.SA', { interval: '1d', range: '1mo' })
+
+  console.log(response)
+}
+
+main()
