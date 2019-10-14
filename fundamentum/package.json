@@ -19,7 +19,7 @@
     "crawler-js": "^2.0.1",
     "csv": "^1.1.1",
     "debug": "^2.6.1",
-    "eslint": "^3.13.0",
+    "eslint": "^6.5.1",
     "express": "^3.2.6",
     "google-finance": "^0.1.9",
     "google-stocks": "^1.0.1",
@@ -55,7 +55,7 @@
     "yahoo-stocks": "^2.0.4"
   },
   "devDependencies": {
-    "eslint": "^3.13.0",
+    "eslint": "^6.5.1",
     "eslint-config-airbnb-base": "^11.0.0",
     "eslint-plugin-import": "^2.2.0",
     "gulp": "^3.9.1",
